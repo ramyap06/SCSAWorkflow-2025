@@ -4,7 +4,7 @@
 The histogram facet feature in `src/spac/visualization.py` has been implemented but needs refactoring before code review. Multiple concerns need to be addressed:
 
 1. **Duplicated global_bin_edges computation** - Same logic exists in both `together` mode and `facet` mode
-2. **Parameter distribution** - 4 new facet parameters may not be appropriately distributed between bare function and template
+2. **Parameter boundary** - Facet layout controls should be simplified and split cleanly between template and bare function
 3. **Bug at line 723** - `ax_array.flatten()` replaces title-setting code in annotation histogram branch
 4. **Test inconsistency** - Facet tests expect per-axis labels but code uses `supxlabel/supylabel`
 5. **Axes handling complexity** - Multiple axes variables may be redundant
@@ -17,7 +17,7 @@ The histogram facet feature in `src/spac/visualization.py` has been implemented 
 - **Lines 657-662**: Global bin edge computation in `together` mode
 - **Lines 769-774**: Identical computation duplicated in `facet` mode  
 - **Line 723**: Bug - `ax_array = ax_array.flatten()` should be `ax_i.set_title(f'{groups[i]}')`
-- **New parameters via kwargs**: `facet_ncol`, `facet_vertical_threshold`, `facet_height`, `facet_aspect`
+- **Current facet kwargs in `histogram()`**: `facet_ncol`, `facet_vertical_threshold`, `facet_height`, `facet_aspect`
 - **Axes variables**: `ax`, `axs`, `ax_array`, `axes` (line 849: `axes = axs if isinstance(axs, (list, np.ndarray)) else [axs]`)
 
 ### Codebase Pattern Findings
@@ -75,40 +75,69 @@ def _compute_global_bin_edges(data_series, bins):
 **Trade-off considered**: Inner function would follow the pattern of `calculate_histogram()`, but since you anticipate faceting elsewhere, module-level is more appropriate.
 
 **Action items**:
-- [ ] Create `_compute_global_bin_edges()` as module-level function near line 400
-- [ ] Replace duplicated code at lines 657-662 (together mode) with function call
-- [ ] Replace duplicated code at lines 769-774 (facet mode) with function call
-- [ ] Add docstring following numpy style guide
+- [x] Create `_compute_global_bin_edges()` as module-level function near line 400
+- [x] Replace duplicated code at lines 657-662 (together mode) with function call
+- [x] Replace duplicated code at lines 769-774 (facet mode) with function call
+- [x] Add docstring following numpy style guide
 
 ---
 
-### 2. Parameter Distribution Between Bare Function and Template
+### 2. Parameter Boundary Between Bare Function and Template
 
 **Analysis of current facet parameters**:
 
 | Parameter | Current Location | Recommended Location | Rationale |
 |-----------|-----------------|---------------------|-----------|
-| `facet` (bool) | `histogram()` | **Keep in `histogram()`** | Core behavior switch, like `together` |
-| `facet_ncol` | kwargs in `histogram()` | **Move to template** | Layout config, similar to `fig_width`/`fig_height` |
-| `facet_vertical_threshold` | kwargs in `histogram()` | **Move to template** | Layout heuristic, UI concern |
-| `facet_height` | kwargs in `histogram()` | **Move to template** | Figure sizing, already handled by template |
-| `facet_aspect` | kwargs in `histogram()` | **Move to template** | Figure sizing, already handled by template |
+| `facet` (bool) | `histogram()` | **Expose via template** | Core behavior switch, like `together` |
+| `facet_ncol` | kwargs in `histogram()` | **Expose via template** | Intuitive layout control users understand |
+| `Figure_Width`, `Figure_Height`, `Figure_DPI` | template | **Template-only user contract** | Existing and familiar figure sizing contract |
+| `target_fig_width`, `target_fig_height` | internal kwargs to `histogram()` | **Internal-only hints** | Needed to derive facet panel geometry from final figure size |
+| `facet_vertical_threshold`, `facet_height`, `facet_aspect` | kwargs in `histogram()` | **Remove from public histogram API** | Overlapping/technical knobs that complicate UX |
 
 **Reasoning**:
 - (a) **Pattern from other templates**: Bare functions handle core logic; templates handle presentation/layout
-- (b) The 4 layout parameters (`facet_ncol`, `facet_vertical_threshold`, `facet_height`, `facet_aspect`) are analogous to `fig_width`, `fig_height`, `fig_dpi` which are already in templates
-- (c) Only the `facet=True/False` toggle belongs in the bare function (like `together`)
+- (b) User-facing API should remain simple for biology users (`facet` + `facet_ncol` + figure-level size)
+- (c) `facet_height`/`facet_aspect` and threshold behavior are technical tuning knobs that cause confusion and conflict with figure-level sizing
 
-**Proposed approach**:
-- **Option A (Simpler)**: Keep parameters in `histogram()` for now, add them to `histogram_template.py` as passthrough. This maintains backward compatibility.
-- **Option B (Cleaner)**: Move FacetGrid creation to template layer, have bare function return data needed for faceting. More complex refactor.
-
-**Recommended**: Option A for this iteration. The parameters can stay in kwargs but the template should explicitly handle them and pass them through.
+**Proposed approach (selected)**:
+- Keep FacetGrid creation in `histogram()`.
+- Expose only `facet` and `facet_ncol` at template level.
+- Pass template figure size to `histogram()` as internal hints (`target_fig_width`, `target_fig_height`).
+- Derive panel geometry internally and do not expose `facet_height`/`facet_aspect`/`facet_vertical_threshold`.
 
 **Action items**:
-- [ ] Add `facet_ncol`, `facet_vertical_threshold`, `facet_height`, `facet_aspect` parameters to `run_from_json()` in histogram_template.py
-- [ ] Pass these through to the `histogram()` call
-- [ ] Document the design decision: facet parameters are in kwargs but should be controlled by template layer
+- [ ] Add `facet` and `facet_ncol` parameters to `run_from_json()` in histogram_template.py
+- [ ] Pass only user-facing facet controls through template into `histogram()`
+- [ ] Pass `target_fig_width` and `target_fig_height` from template into `histogram()` as internal kwargs
+- [ ] Remove `facet_vertical_threshold`, `facet_height`, and `facet_aspect` from histogram docstring/API contract
+- [ ] Document that facet panel geometry is internally derived from figure-level size
+
+### 2b. Size Coordination Strategy (New)
+
+**Question**: Should facet panel geometry be derived from template `Figure_Width` and `Figure_Height`?
+
+**Answer**: **Yes.**
+
+**Why**:
+1. `FacetGrid` computes initial figure geometry from panel `height` and `aspect`.
+2. Template later applies `fig.set_size_inches(Figure_Width, Figure_Height)`.
+3. If these two systems are tuned independently, resulting plots can look stretched or cramped.
+
+**Proposed policy**:
+1. Keep template figure size (`Figure_Width`, `Figure_Height`, `Figure_DPI`) as the authoritative user contract.
+2. In facet mode, pass target figure size into `histogram()` and derive internal panel geometry from that target size before creating the `FacetGrid`.
+3. Use `facet_ncol` + group count to determine `nrow`, then compute:
+    - `panel_width = Figure_Width / ncol`
+    - `panel_height = Figure_Height / nrow`
+    - `facet_height = panel_height`
+    - `facet_aspect = panel_width / panel_height`
+4. Clamp extreme aspect ratios if needed (for readability and to avoid degenerate layouts).
+5. Keep final `fig.set_size_inches()` in template as a consistency snap, not a competing sizing system.
+
+**Action items**:
+- [ ] Define minimum safe panel size/aspect guardrails (for dense facet grids)
+- [ ] Compute derived facet geometry when `facet=True` using template-provided `target_fig_width`/`target_fig_height` + `facet_ncol`
+- [ ] Document precedence and formulas in template docstring/comments
 
 ---
 
@@ -202,7 +231,7 @@ else:
 - Annotation histograms should get simpler titles like `"Group A"` (no layer info since annotations don't have layers)
 
 **Action items**:
-- [ ] Replace line 723 with: `ax_i.set_title(f'{groups[i]}')`
+- [x] Replace line 723 with: `ax_i.set_title(f'{groups[i]}')`
 - [ ] Verify titles appear correctly for annotation-based grouped histograms
 
 ---
@@ -228,6 +257,97 @@ But the code clears per-axis labels and uses `fig.supxlabel()` and `fig.supylabe
 
 ---
 
+## Decision Log (2026-03-31)
+
+### D1. Facet Parameter Exposure
+
+**Decision**: Keep only essential facet controls public.
+
+**Public/user-facing**:
+- `facet` (behavior switch)
+- `facet_ncol` (clear, intuitive layout control)
+- Existing template-level `Figure_Width`, `Figure_Height`, `Figure_DPI`
+
+**Internal-only**:
+- `target_fig_width`, `target_fig_height` (template -> histogram sizing hints)
+
+**Remove from histogram API contract**:
+- `facet_vertical_threshold`
+- `facet_height`
+- `facet_aspect`
+
+**Rationale**:
+- Avoid user confusion from overlapping sizing systems.
+- Keep template APIs simple and consistent across plotting templates.
+
+### D2. Sizing Precedence Rule
+
+**Decision**: Template figure sizing is authoritative.
+
+In facet mode, final output size should be controlled by template-level
+`Figure_Width`/`Figure_Height` (and DPI), not by exposing
+panel-level geometry knobs in JSON/template interfaces.
+
+Implementation policy: pass target figure size from template into histogram,
+derive internal `facet_height`/`facet_aspect` from figure size and facet
+grid shape, then construct FacetGrid.
+
+**Rationale**:
+- Maintains cross-plot consistency.
+- Avoids two competing sizing knobs controlling the same outcome.
+- Produces more predictable and visually balanced facet layouts.
+
+### D3. Kwarg Leakage Guardrail
+
+**Decision**: Add explicit safeguard when wiring facet options through the
+template.
+
+If facet-related kwargs are passed into `histogram()`, ensure they do not leak
+into non-facet seaborn calls.
+
+**Rationale**:
+- Prevents accidental forwarding of facet-only keys to `sns.histplot()` paths.
+
+### D5. No Deprecation Cycle Needed
+
+**Decision**: No deprecation handling is required for removed facet geometry
+kwargs because these changes are new and not exposed in the template/user path.
+
+**Rationale**:
+- No established external usage to preserve.
+- Enables cleaner implementation now.
+
+### D4. Label Strategy Resolution Gate
+
+**Decision**: Resolve axis-label strategy before test update.
+
+Choose one behavior and enforce it consistently:
+1. Per-axis labels on each facet axis, or
+2. Figure-level `supxlabel`/`supylabel`
+
+Only after this decision should `test_facet_plot` assertions be updated.
+
+### Immediate Next Step (Investigation Complete)
+
+Proceed directly with Phase 2 implementation for template wiring and internal
+facet size derivation, while keeping D4 (label strategy) as a tracked decision
+for test alignment in Phase 3.
+
+---
+
+## Helper Function Decision
+
+`_compute_global_bin_edges()` remains as a module-level helper in
+`src/spac/visualization.py`.
+
+Reasoning:
+- Although compact, it captures reusable histogram/facet consistency behavior.
+- This pattern is likely to be reused when faceting logic is added to other
+    visualizations (e.g., scatter) later.
+- No further helper refactoring is needed for this histogram-focused iteration.
+
+---
+
 ## Priority Order
 
 1. **HIGH PRIORITY**: 
@@ -235,7 +355,8 @@ But the code clears per-axis labels and uses `fig.supxlabel()` and `fig.supylabe
    - Extract `_compute_global_bin_edges()` module-level function
    
 2. **MEDIUM PRIORITY**: 
-   - Add facet parameters to template and document design rationale
+    - Wire `facet`/`facet_ncol` and internal figure-size hints through template
+    - Remove unnecessary facet geometry knobs from histogram API contract
    - Plan for axis abbreviation/rotation in template layer
    
 3. **LOW PRIORITY**: 
@@ -249,16 +370,21 @@ But the code clears per-axis labels and uses `fig.supxlabel()` and `fig.supylabe
 ## Implementation Checklist
 
 **Phase 1: Bug Fixes and Core Refactoring**
-- [ ] Fix line 723 bug: restore `ax_i.set_title(f'{groups[i]}')`
-- [ ] Create `_compute_global_bin_edges()` at module level (line ~400)
-- [ ] Replace together mode bin computation (lines 657-662) with helper call
-- [ ] Replace facet mode bin computation (lines 769-774) with helper call
+- [x] Fix line 723 bug: restore `ax_i.set_title(f'{groups[i]}')`
+- [x] Create `_compute_global_bin_edges()` at module level (line ~400)
+- [x] Replace together mode bin computation (lines 657-662) with helper call
+- [x] Replace facet mode bin computation (lines 769-774) with helper call
 - [ ] Run tests: `python -m pytest tests/test_visualization/test_histogram.py`
 
 **Phase 2: Template Layer Enhancement**
-- [ ] Add `facet_ncol`, `facet_vertical_threshold`, `facet_height`, `facet_aspect` to `histogram_template.py`
-- [ ] Pass these parameters through to `histogram()` call
-- [ ] Document design decision in template docstring
+- [ ] Add `facet_ncol` to `histogram_template.py` as the only user-facing facet layout control
+- [ ] Add `facet` to `histogram_template.py` as user-facing behavior switch
+- [ ] Pass `target_fig_width`/`target_fig_height` into `histogram()` as internal sizing hints
+- [ ] Remove `facet_vertical_threshold`/`facet_height`/`facet_aspect` from histogram docstring and accepted public controls
+- [ ] Document sizing precedence in template docstring: `Figure_Width`/`Figure_Height` are authoritative
+- [ ] Add derived geometry step: compute internal `facet_height`/`facet_aspect` from figure size + facet grid shape
+- [ ] Define and document minimum panel-size/aspect guardrails
+- [ ] Add safeguard to prevent facet-only kwargs from leaking into non-facet seaborn paths
 - [ ] Plan axis abbreviation feature for template (if not already present)
 
 **Phase 3: Testing and Cleanup (Deferred)**
@@ -266,6 +392,9 @@ But the code clears per-axis labels and uses `fig.supxlabel()` and `fig.supylabe
 - [ ] Add test for global bin edge consistency across facets
 - [ ] Add test for facet layout parameters
 - [ ] Consider: test for `fig.axes` simplification if implemented
+
+**Phase 4: Future Unification**
+- [ ] Make facet options universal across visualizations later
 
 ---
 
