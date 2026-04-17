@@ -6,16 +6,11 @@ The histogram facet feature in src/spac/visualization.py is implemented and clos
 
 ## Immediate Next Step
 
-Execute Task 9 first, then continue Task 6/8/7/5/10/1/4:
-1. Implement Task 9 guardrail + lifecycle refactor and add minimal regression tests.
-2. Continue Task 6 label alignment updates and Task 8 template tests.
-3. Complete Task 7 visualization tests (including lightweight bar assertions), then complete Task 5 default-like bins tests, Task 10 helper relocation updates, Task 1 shared-bin numerical/categorical tests, and Task 4 facet-layout parameter tests.
+Continue Task 8/7/5/10/1/4:
+1. Execute Task 8 template I/O-only tests.
+2. Continue Task 7 visualization coverage, then complete Task 5 default-like bins tests, Task 10 helper relocation updates, Task 1 shared-bin numerical/categorical tests, and Task 4 facet-layout parameter tests.
 
 ## Progress
-
-### Addressed Tasks
-2. Histogram/Template Parameter Boundary.
-3. Grouped Annotation Title Bugfix.
 
 ### Ongoing Tasks
 1. Shared Global Bins Helper.
@@ -23,12 +18,17 @@ Execute Task 9 first, then continue Task 6/8/7/5/10/1/4:
 5. Bins Default-Like Fallback Policy and Behavior.
 
 ### Remaining Tasks
-6. Facet Label Strategy and Test Alignment.
 7. Visualization Histogram Unit-Test Completion.
 8. Template Histogram Unit-Test Completion.
-9. Facet `ax` Guardrail and Figure Lifecycle Refactor.
 10. Helper Boundary Relocation and Naming Alignment (Facet Scope).
 11. Facet Long X-Label Layout Handling.
+
+### Addressed Tasks
+2. Histogram/Template Parameter Boundary.
+3. Grouped Annotation Title Bugfix.
+6. Facet Label Strategy and Test Alignment.
+9. Facet `ax` Guardrail and Figure Lifecycle Refactor.
+12. Facet Plot Test Decomposition and Smoke-Path Contract.
 
 ### Issues (Open)
 None currently.
@@ -48,8 +48,8 @@ None currently.
    - Figure size contract remains at template layer and is passed internally as target_fig_width/target_fig_height.
    - Template keeps validation for plotting controls and bins policy entrypoint.
 3. Current focused test state (tests/test_visualization/test_histogram.py):
-   - 20 passed, 1 failed.
-   - Failing test is test_facet_plot due to per-axis label expectations.
+   - 24 passed, 0 failed.
+   - Facet decomposition and non-default stat label regression assertion are completed.
 
 ### Codebase Pattern Findings (Concise)
 1. Visualization-specific shared logic should stay in visualization.py module-level helpers.
@@ -119,23 +119,22 @@ Action items:
 ### Task 6. Facet Label Strategy and Test Alignment
 Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
 
-Status: Implementation done, tests pending
+Status: Done
 
 Implementation plan:
-1. Update `test_facet_plot` to keep structure checks (axes collection, facet count, facet titles).
-2. Replace per-axis xlabel/ylabel assertions with figure-level label assertions:
+1. Replace per-axis xlabel/ylabel assertions with figure-level label assertions:
    - assert per-axis labels are empty in facet mode,
    - assert `fig._supxlabel` and `fig._supylabel` are present and match expected text.
-3. Add one focused regression assertion for label strategy under non-default stat (e.g., `stat='density'`) to confirm y super-label reflects stat mapping.
-4. Run only updated tests first for fast feedback, then run full histogram test file.
-5. If needed, do minimal assertion tuning to avoid over-constraining matplotlib internals.
+2. Add one focused regression assertion for label strategy under non-default stat (e.g., `stat='density'`) to confirm y super-label reflects stat mapping.
+3. Run only updated tests first for fast feedback, then run full histogram test file.
+4. If needed, do minimal assertion tuning to avoid over-constraining matplotlib internals.
 
 Action items:
 - [x] Lock decision: facet mode uses figure-level labels.
 - [x] Keep per-axis labels empty in facet mode and set supxlabel/supylabel.
-- [ ] Update test_facet_plot to assert figure-level labels.
-- [ ] Add one histogram-level regression assertion to lock label strategy and stat mapping.
-- [ ] Keep facet label/title test coverage for the figure-level labeling contract under this task.
+- [x] Update test_facet_plot to assert figure-level labels.
+- [x] Add one histogram-level regression assertion to lock label strategy and stat mapping.
+- [x] Keep facet label/title test coverage for the figure-level labeling contract under this task.
 
 ### Task 7. Visualization Histogram Unit-Test Completion
 Location: tests/test_visualization/test_histogram.py
@@ -143,10 +142,10 @@ Location: tests/test_visualization/test_histogram.py
 Status: In progress
 
 Action items:
-- [ ] Run focused histogram test file and make it fully green.
+- [x] Run focused histogram test file and make it fully green.
+- [ ] Complete remaining histogram coverage after Task 12 decomposition/smoke-path work.
 - [ ] Add/adjust facet validation unit tests (`facet=True` requires `group_by`, and `facet` with `together=True` conflict).
 - [ ] Add unit tests for newly introduced kwargs (`shrink`, `alpha`).
-- [ ] Write/keep lightweight facet bar-level assertions (smoke-level only; avoid strict center/height checks).
 - [ ] Add one focused facet regression test for annotation-based categorical data using lightweight assertions.
 - [ ] Add additional missed unit-test cases identified in the final gap scan, and verify all introduced facet logic paths are covered.
 
@@ -156,20 +155,19 @@ Location: tests/templates/test_histogram_template.py
 Status: Not started
 
 Action items:
-- [ ] Keep template tests I/O-focused only: verify output contract remains stable (`saved_files` keys and generated artifacts).
-- [ ] (Undecided) If any template assertions beyond I/O are retained, restrict them to minimal non-logic wiring checks only. (facet-mode test, `Facet`, `FacetNcol`)
+- [ ] Verify template output contract remains stable (`saved_files` keys and generated artifacts).
 - [ ] Remove duplicate facet x-label reassignment in template: keep label content from `histogram`; template only applies presentation adjustments (e.g., rotation) if needed.
-- [ ] Run template test file and keep it green with histogram test updates.
+- [ ] Run template test file and verify passing status with histogram test updates.
 
 ### Task 9. Facet `ax` Guardrail and Figure Lifecycle Refactor
 Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
 
-Status: Not started
+Status: Done
 
 Action items:
-- [ ] Reject `facet=True` when external `ax` is provided, with a clear validation message.
-- [ ] Refactor histogram figure creation/closure flow to avoid throwaway figures and keep strict internal-ownership closing.
-- [ ] Add minimal regression tests for the guardrail and lifecycle behavior.
+- [x] Reject `facet=True` when external `ax` is provided, with a clear validation message.
+- [x] Refactor histogram figure creation/closure flow to avoid throwaway figures and keep strict internal-ownership closing.
+- [x] Add minimal regression tests for the guardrail and lifecycle behavior.
 
 ### Task 10. Helper Boundary Relocation and Naming Alignment (Facet Scope)
 Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
@@ -187,8 +185,19 @@ Status: Not started
 
 Action items:
 - [ ] Add a targeted facet-mode layout adjustment so long/rotated x-label text does not get hidden or overlap neighboring facets.
-- [ ] Keep the change minimal and document any tradeoff against strict facet geometry proportionality.
+- [ ] Document tradeoffs against strict facet geometry proportionality for the selected layout adjustment.
 - [ ] Add focused regression coverage for long-label facet readability behavior (annotation/categorical case included).
+
+### Task 12. Facet Plot Test Decomposition and Smoke-Path Contract
+Location: tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Split the current heavy facet test into focused tests for structure, title mapping, label policy, and rendering smoke-path checks.
+- [x] Add one thin facet smoke-path test that verifies end-to-end execution and basic plotted output presence, including lightweight bar-level presence checks (non-empty facet patches/artists).
+- [x] Add split assertions that validate facet behavior using stable, non-geometry-sensitive checks.
+- [x] Run focused facet tests first, then run the full histogram test file.
 
 ---
 
@@ -303,7 +312,7 @@ Addresses notebook/lifecycle issues without broad internal redesign.
 
 ### D11. Facet Bin/Bar/Label Test Scope (Task 7)
 Decision:
-Keep bar-level assertions lightweight in Task 7, place shared-bin coverage under Task 1, and keep default-like bins fallback coverage under Task 5.
+Keep bar-level assertions lightweight across Task 12 split/smoke tests and Task 7 follow-up coverage, place shared-bin coverage under Task 1, and keep default-like bins fallback coverage under Task 5.
 
 Details:
 - Cover facet-specific bin contracts directly while avoiding brittle rendering-detail assertions.
@@ -318,7 +327,7 @@ Decision:
 Template histogram tests remain I/O-focused for this PR.
 
 Details:
-Avoid template-side logic tests; keep only output-contract coverage. Any additional template assertions remain explicitly undecided and must be non-logic wiring-only.
+Avoid template-side logic tests; keep only output-contract coverage. Non-I/O template assertions are out of scope for this PR.
 
 Rationale:
 Aligns with repository template-test style and avoids duplicating visualization logic checks.
@@ -373,6 +382,42 @@ For this issue, the chosen path is implementation via Task 11 (layout handling),
 Rationale:
 Keeps this refactoring decision concrete and scoped to facet label readability behavior in this PR.
 
+### D18. Facet Test Split Task Boundary (Task 12)
+Decision:
+Track facet-test decomposition as dedicated Task 12 and remove overlapping split/smoke scope from Task 7.
+
+Details:
+- Task 6 owns figure-level label policy checks and non-default stat label mapping.
+- Task 12 owns splitting the heavy facet test and defining one smoke-path facet test.
+- Task 7 owns remaining histogram/facet coverage beyond the split work.
+
+Rationale:
+Clarifies ownership, avoids duplicated action items, and keeps facet-test changes reviewable.
+
+---
+
+## Task Execution Log
+
+- 2026-04-16: Completed Task 9 implementation and focused validation.
+   - Added external-`ax` guardrail for unsupported grouped-separate/facet layouts in `histogram`.
+   - Refactored figure lifecycle flow to avoid throwaway figure creation/closure in grouped paths.
+   - Added regression coverage in `tests/test_visualization/test_histogram.py` for external-`ax` support/rejection modes.
+   - Verified focused tests in `spac` environment:
+      - `conda run -n spac python -m unittest discover -s tests/test_visualization -p test_histogram.py -k ax_passed_as_argument`
+      - `conda run -n spac python -m unittest discover -s tests/test_visualization -p test_histogram.py -k external_ax_guardrail_modes`
+
+- 2026-04-16: Completed Task 6 test-failure fix and histogram test verification.
+   - Updated `test_facet_plot` in `tests/test_visualization/test_histogram.py` to assert facet figure-level labels and empty per-axis labels.
+   - Verified targeted fix and full histogram test file in `spac` environment:
+      - `conda run -n spac pytest tests/test_visualization/test_histogram.py::TestHistogram::test_facet_plot -q`
+      - `conda run -n spac pytest tests/test_visualization/test_histogram.py -q` (22 passed)
+
+- 2026-04-16: Completed Task 12 facet-test decomposition and finalized Task 6 stat-mapping coverage.
+   - Reorganized facet tests in `tests/test_visualization/test_histogram.py` into scenario-based checks: smoke+structure, titles+label policy, and non-default stat label mapping.
+   - Added explicit facet non-default stat regression assertion for `stat='density'` figure-level y-label behavior.
+   - Verified updated histogram test file in `spac` environment:
+      - `conda run -n spac pytest tests/test_visualization/test_histogram.py -q` (24 passed)
+
 ---
 
 ## Future Work (Out of Scope for This PR)
@@ -406,14 +451,4 @@ Keeps this refactoring decision concrete and scoped to facet label readability b
    - Prefer minimal refactor scope for this PR: facet-mode correctness first, broad cleanup later.
 - Run tests after each change: python -m pytest tests/test_visualization/test_histogram.py
 - Keep this PR focused on histogram facet correctness, tests, and contract clarity
-
-## Plan.md Update Policies
-
-- Update only sections affected by newly decided items; keep unrelated sections unchanged.
-- Never delete historical checked items unless they are factually incorrect.
-- When a decision resolves an Issues item, remove only the resolved item (or resolved sub-part) and keep remaining undecided/open items intact.
-- Keep task names aligned with their action items; split tasks when one task starts mixing distinct scopes.
-- Keep action items executable and outcome-focused; avoid passive "keep" statements as standalone action items.
-- Keep checkbox status strict: only mark items done after implementation/tests are actually completed.
-- Reflect major decision outcomes in Decision Log concisely, then mirror them in the relevant task action items.
 
