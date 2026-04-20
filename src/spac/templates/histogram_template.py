@@ -217,6 +217,23 @@ def run_from_json(
             f'Received "{stat}".'
         )
 
+    # validate figure size parameters
+    fig_width = text_to_value(
+        fig_width,
+        to_float=True,
+        param_name="Figure_Width"
+    )
+    fig_height = text_to_value(
+        fig_height,
+        to_float=True,
+        param_name="Figure_Height"
+    )
+    if fig_width <= 0 or fig_height <= 0:
+        raise ValueError(
+            f'Figure_Width/Height should be a positive number.'
+            f'Received "{fig_width}"/"{fig_height}".'
+        )
+
     # Validate x-axis label rotation
     if (x_rotate < 0) or (x_rotate > 360):
         raise ValueError(
@@ -236,13 +253,13 @@ def run_from_json(
                 'Together and Facet cannot both be True. Please set one to False.'
             )
     
-    # Validate facet_ncol, allowing for "auto" or positive integers
+    # Validate and canonicalize facet_ncol, allowing for "auto" or positive integers
     facet_ncol = text_to_value(
         facet_ncol,
         default_none_text="auto",
-        value_to_convert_to="auto"
+        value_to_convert_to=None
     )
-    if facet_ncol != "auto":
+    if facet_ncol is not None:
         facet_ncol = text_to_value(
             facet_ncol,
             to_int=True,
@@ -325,17 +342,10 @@ def run_from_json(
 
         # Rotate x labels
         ax.tick_params(axis='x', rotation=x_rotate)
-    
-    # Process figure-level xlabel for faceted plots
-    if facet:
-        facet_xlabel = getattr(fig, '_supxlabel', None)
-        if facet_xlabel is None:
-            logger.warning(
-                "Facet xlabel not found. X label rotation will "
-                "not be applied."
-            )
-        else:
-            facet_xlabel.set_rotation(x_rotate)
+        if x_rotate:
+            for label in ax.get_xticklabels():
+                label.set_rotation_mode('anchor')
+                label.set_horizontalalignment('right')
 
     # Set titles based on group_by and facet
     if text_to_value(group_by):
