@@ -564,7 +564,8 @@ def histogram(adata, feature=None, annotation=None, layer=None,
         If True, and if group_by != None, create one plot combining all groups.
         If False, create separate histograms for each group.
         The appearance of combined histograms can be controlled using the
-        `multiple` and `element` parameters in **kwargs.
+        `multiple` and `element` parameters in **kwargs. Separate grouped or
+        faceted histograms ignore `multiple`.
         To control how the histograms are normalized (e.g., to divide the
         histogram by the number of elements in every group), use the `stat`
         parameter in **kwargs. For example, set `stat="probability"` to show
@@ -589,7 +590,8 @@ def histogram(adata, feature=None, annotation=None, layer=None,
         Additional keyword arguments passed to seaborn histplot function.
         Key arguments include:
         - `multiple`: Determines how the subsets of data are displayed
-           on the same axes. Options include:
+           on the same axes. Ignored when `group_by` is used with
+           `together=False`. Options include:
             * "layer": Draws each subset on top of the other
                without adjustments.
             * "dodge": Dodges bars for each subset side by side.
@@ -756,80 +758,73 @@ def histogram(adata, feature=None, annotation=None, layer=None,
     def _parse_optional_number(
         name,
         value,
-        default_like_values=None,
-        to_type="float",
-        to_range=None,
-        to_default_value=None,
-        parse_rules : Optional[Dict[str, Union[int, float]]] = None,
+        *,
+        kind=float,
+        default=None,
+        positive=False,
+        tokens=None,
     ):
-        """Parse an optional numeric value with default-like string handling."""
-        def _is_default_like(value, default_like_values=None):
-            if isinstance(value, str) and default_like_values is not None:
-                return value.strip().lower() in default_like_values
-            return False
+        """Parse an optional numeric hint.
 
-        if value is None or _is_default_like(value, default_like_values):
-            return to_default_value
-        if parse_rules and isinstance(value, str):
-            parse_rules = {k.lower(): v for k, v in parse_rules.items()}
-            value_lower = value.strip().lower()
-            if value_lower in parse_rules:
-                logging.info(
-                    f'Parsed {name}="{value}" as {parse_rules[value_lower]} '
-                )
-                return parse_rules[value_lower]
+        Returns ``default`` for ``None``, resolves recognized string tokens
+        before numeric coercion, and optionally enforces finite and positive
+        values on the parsed result.
+        """
+        if value is None:
+            return default
+        if isinstance(value, str):
+            value = value.strip()
+            if tokens and value.lower() in tokens:
+                return tokens[value.lower()]
+        expected = (
+            f'{"positive " if positive else ""}{kind.__name__}'
+            f'{" or a supported keyword" if tokens else ""}'
+        )
+        if isinstance(value, bool):
+            raise ValueError(f'{name} must be a {expected}. Received "{value}".')
         try:
-            if to_type == "float":
-                parsed = float(value)
-            elif to_type == "int":
-                parsed = int(value)
+            parsed = kind(value)
         except (TypeError, ValueError):
-            raise ValueError(
-                f'{name} must be a number of type {to_type}'
-                f'{" or one of default values. " if default_like_values else ". "}'
-                f'Received "{value}".'
-            )
+            raise ValueError(f'{name} must be a {expected}. Received "{value}".')
         if not math.isfinite(parsed):
             raise ValueError(
-                f'{name} must be a finite {to_type}. Received "{value}".'
+                f'{name} must be a finite {kind.__name__}. '
+                f'Received "{value}".'
             )
-        if to_range == "positive":
-            to_range = [float('1e-10'), float('inf')]
-        if isinstance(to_range, list):
-            min_val, max_val = to_range
-            if parsed < min_val or parsed > max_val:
-                raise ValueError(
-                    f'{name} must be a {to_type} in the range [{min_val}, {max_val}].'
-                    f' Received "{value}".'
-                )
+        if positive and parsed <= 0:
+            raise ValueError(
+                f'{name} must be a positive {kind.__name__}. '
+                f'Received "{value}".'
+            )
         return parsed
 
     # Parse max_groups with "unlimited" handling and validation.
     max_groups = _parse_optional_number(
         "max_groups",
-        kwargs.pop('max_groups', 20),
-        to_type="int",
-        to_default_value=20,
-        parse_rules={"unlimited": float('inf')},
+        kwargs.pop('max_groups', None),
+        kind=int,
+        default=20,
+        positive=True,
+        tokens={"unlimited": float('inf')},
     )
 
     # Parse facet layout hints so they never leak to seaborn.
     facet_ncol = _parse_optional_number(
         "facet_ncol",
         kwargs.pop('facet_ncol', None),
-        default_like_values={"", "auto", "none"},
-        to_type="int",
-        to_range="positive",
+        kind=int,
+        positive=True,
+        tokens={"": None, "auto": None, "none": None},
     )
     facet_fig_width = _parse_optional_number(
         "facet_fig_width",
         kwargs.pop('facet_fig_width', None),
-        to_range="positive",
+        positive=True,
     )
     facet_fig_height = _parse_optional_number(
         "facet_fig_height",
         kwargs.pop('facet_fig_height', None),
-        to_range="positive",
+        positive=True,
     )
     if (facet_fig_width is None) != (facet_fig_height is None):
         raise ValueError(
@@ -839,7 +834,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
     facet_tick_rotation = _parse_optional_number(
         "facet_tick_rotation",
         kwargs.pop('facet_tick_rotation', None),
-        to_default_value=0.0,
+        default=0.0,
     ) % 360.0
 
     # Function to calculate histogram data
@@ -891,25 +886,49 @@ def histogram(adata, feature=None, annotation=None, layer=None,
                 'count': counts.values
             })
 
-    # Function to compute shared bin edges for grouped histograms
-    def compute_global_bin_edges(data_series, bins):
-        """Compute shared bin boundaries for grouped histogram paths.
-
-        Parameters
-        ----------
-        data_series : pandas.Series
-            Data column used to derive shared bins.
-        bins : int or sequence
-            Bin specification forwarded to numpy/seaborn logic.
-
-        Returns
-        -------
-        numpy.ndarray or pandas.Index
-            Numeric bin edges, or categorical labels for non-numeric data.
-        """
+    def build_grouped_histogram_table(
+        plot_data, data_column, group_by, groups, bins
+    ):
+        """Build per-group histogram-bin tables for grouped histogram paths."""
+        # Determine shared bins across groups for consistent plotting.
+        data_series = plot_data[data_column]
         if pd.api.types.is_numeric_dtype(data_series):
-            return np.histogram_bin_edges(data_series, bins=bins)
-        return data_series.unique()
+            shared_bins = np.histogram_bin_edges(data_series, bins=bins)
+        elif isinstance(data_series.dtype, pd.CategoricalDtype):
+            shared_bins = data_series.cat.categories
+        else:
+            shared_bins = pd.Index(pd.unique(data_series.dropna()))
+
+        # Compute histograms for each group using the shared bins.
+        histograms = []
+        for group in groups:
+            group_data = plot_data.loc[
+                plot_data[group_by] == group, data_column
+            ]
+            if pd.api.types.is_numeric_dtype(data_series):
+                group_hist = calculate_histogram(
+                    group_data, bins, bin_edges=shared_bins
+                )
+            else:
+                # For categorical data, pad missing categories with zero counts
+                # to ensure consistent plotting.
+                group_hist = calculate_histogram(group_data, bins)
+                group_hist = (
+                    group_hist
+                    .set_index('bin_center')
+                    .reindex(shared_bins)
+                    .rename_axis('bin_center')
+                    .reset_index()
+                )
+                group_hist['count'] = group_hist['count'].fillna(0)
+                group_hist['bin_left'] = group_hist['bin_center']
+                group_hist['bin_right'] = group_hist['bin_center']
+            group_hist[group_by] = group
+            histograms.append(group_hist)
+
+        # Concatenate all group histograms into a single DataFrame for plotting.
+        hist_data = pd.concat(histograms, ignore_index=True)
+        return hist_data, shared_bins
 
     # Function to compute maximum tick label length for categorical data
     def compute_max_tick_label_length(data_series):
@@ -991,35 +1010,37 @@ def histogram(adata, feature=None, annotation=None, layer=None,
             if ax is None:
                 fig, ax = plt.subplots()
 
-            # Compute global bin edges based on the entire dataset
-            global_bin_edges = compute_global_bin_edges(
-                plot_data[data_column], kwargs['bins']
+            hist_data, shared_bins = build_grouped_histogram_table(
+                plot_data,
+                data_column,
+                group_by,
+                groups,
+                bins=kwargs.pop('bins'),
             )
-
-            hist_data = []
-            # Compute histograms for each group separately and combine them
-            for group in groups:
-                group_data = plot_data[
-                    plot_data[group_by] == group
-                ][data_column]
-                group_hist = calculate_histogram(group_data, kwargs['bins'],
-                                                 bin_edges=global_bin_edges)
-                group_hist[group_by] = group
-                hist_data.append(group_hist)
-            hist_data = pd.concat(hist_data, ignore_index=True)
+            if pd.api.types.is_numeric_dtype(plot_data[data_column]):
+                kwargs['bins'] = shared_bins.tolist()
 
             # Set default values if not provided in kwargs
             kwargs.setdefault("multiple", "stack")
             kwargs.setdefault("element", "bars")
 
-            sns.histplot(data=hist_data, x='bin_center', weights='count',
-                         hue=group_by, ax=ax, **kwargs)
+            sns.histplot(
+                data=hist_data,
+                x='bin_center',
+                weights='count',
+                hue=group_by,
+                ax=ax,
+                **kwargs,
+            )
             # If plotting feature specify which layer
             if feature:
                 ax.set_title(f'Layer: {layer}')
             axs.append(ax)
 
         else:
+            # 'multiple' parameter is not applicable
+            kwargs.pop('multiple', None)
+            
             if not facet:
                 fig, ax_array = plt.subplots(
                     n_groups, 1, figsize=(5, 5 * n_groups)
@@ -1053,7 +1074,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
                     facet_tick_max_chars = compute_max_tick_label_length(plot_data[data_column])
 
                 # Derive facet geometry based on group count and layout hints
-                # Keys include: facet_ncol, facet_height, facet_aspect
+                # Returned layout keys: facet_ncol, facet_height, facet_aspect
                 facet_layout = _derive_facet_geometry(
                     n_groups=n_groups,
                     facet_ncol=facet_ncol,
@@ -1063,14 +1084,21 @@ def histogram(adata, feature=None, annotation=None, layer=None,
                     facet_tick_rotation=facet_tick_rotation,
                 )
 
-                # Compute global bins so all facets use consistent boundaries.
-                global_bin_edges = compute_global_bin_edges(
-                    plot_data[data_column], kwargs['bins']
+                # Compute histogram data and shared bins for consistent plotting.
+                # For non-numeric data, shared_bins will be dropped intentionally.
+                hist_data, shared_bins = build_grouped_histogram_table(
+                    plot_data,
+                    data_column,
+                    group_by,
+                    groups,
+                    bins=kwargs.pop('bins'),
                 )
+                if pd.api.types.is_numeric_dtype(plot_data[data_column]):
+                    kwargs['bins'] = shared_bins.tolist()
 
                 # Create the FacetGrid for the histogram
                 hist = sns.FacetGrid(
-                    plot_data,
+                    hist_data,
                     col=group_by,
                     col_wrap=facet_layout['facet_ncol'],
                     height=facet_layout['facet_height'],
@@ -1079,15 +1107,13 @@ def histogram(adata, feature=None, annotation=None, layer=None,
                     sharey=True,   
                 )
 
-                hist_kwargs = kwargs.copy()
-                # For numeric data, pass global bin edges to ensure consistent binning across facets.
-                if pd.api.types.is_numeric_dtype(plot_data[data_column]):
-                    hist_kwargs['bins'] = global_bin_edges.tolist()
-                else:
-                    hist_kwargs.pop('bins', None)
-
                 # Map the histogram function to the grid
-                hist.map_dataframe(sns.histplot, x=data_column, **hist_kwargs)
+                hist.map_dataframe(
+                    sns.histplot,
+                    x='bin_center',
+                    weights='count',
+                    **kwargs,
+                )
 
                 # Keep shared scale but show x tick numbers on bottom row and y tick numbers on left column
                 for ax_i in hist.axes.flat:
@@ -1116,7 +1142,6 @@ def histogram(adata, feature=None, annotation=None, layer=None,
                     facet_fig_height or fig.get_figheight(),
                 )
                 axs.extend(hist.axes.flat)
-                hist_data = plot_data
 
     else:
         if ax is None:
