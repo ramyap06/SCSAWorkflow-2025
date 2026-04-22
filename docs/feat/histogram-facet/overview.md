@@ -1,4 +1,4 @@
-# Histogram Facet Refactoring Overview
+# Histogram Facet Development Overview
 
 ## Problem Statement
 
@@ -20,12 +20,13 @@ This plan now serves as the completed implementation record for histogram facet 
   - [Task Details](./task-details.md)
   - [Decisions](./decisions.md)
   - [Implementation Log](./implementation-log.md)
+  - [Code Review 2026-04-21](./code-review-2026-04-21.md)
 
 ---
 
 ## Immediate Next Step
 
-None currently.
+Issue 1. Fix template `Figure_Width` / `Figure_Height` zero-value validation, then Issue 2. Stop forwarding irrelevant template `Max_Groups` when `Group_by` is unset.
 
 ## Progress
 
@@ -36,6 +37,8 @@ None currently.
 None currently.
 
 ### Addressed Tasks
+CR.2. Ignore facet-only size hints when `facet=False`.
+CR.1. Documentation/review alignment for `max_groups` and `facet_ncol` direct-call edge cases.
 1. Shared Global Bins Helper.
 2. Histogram/Template Parameter Boundary.
 3. Grouped Annotation Title Bugfix.
@@ -59,7 +62,8 @@ None currently.
 21. Template Validation Convention Audit and Alignment.
 
 ### Issues (Open)
-None currently.
+1. Template `Figure_Width` / `Figure_Height` validation currently uses truthiness, so an explicit zero can bypass the positive-value check and silently fall back to the default figure size instead of raising.
+2. Template `Max_Groups` is still forwarded when `Group_by` is unset, so an ungrouped template call can fail on an irrelevant `Max_Groups` value instead of ignoring it.
 
 ---
 
@@ -101,17 +105,29 @@ See [implementation-log.md](./implementation-log.md) for the full dated implemen
 
 ## Future Work (Out of Scope for This PR)
 
-- Potential support for externally provided axes in facet mode (`facet=True` + external `ax`).
-- If implemented later, define explicit ownership rules for figure/axes lifecycle and provide dedicated API/tests.
-- Possible simplification of facet plotting internals.
-- Potential refinement of facet geometry model to account for suptitle/supylabel layout effects (defer to future developers).
-- Remaining non-facet histogram return-data consistency follow-up (out of this PR): unify `hist_data` contract across non-facet histogram branches now that Task 18 has narrowed the facet download contract.
-- Raw-data / KDE fidelity versus count-table output contract across histogram branches.
-- Revisit whether histogram-local helpers with cross-visualization value should move into `spac.utils` in a later cleanup PR.
-- Consider a small internal shared coercion helper only if facet-hint parsing expands enough to justify more abstraction again.
-- Histogram template parameter-name consistency cleanup across blueprint/template/test payloads (defer; not in facet PR scope).
-- Possible double-checking of binning logic.
-- UI axis abbreviation follow-up for a later PR only; keep it out of Task 11.
+### Issues
+
+- Fix bugs in `together=False`, `facet=False` branch:
+    - Incorrect output `hist_data` (currently repeatedly rewrote during the loop);
+    - Overlapping label issues for long labels -> may reuse or imitate the facet geometry derivation logic.
+- Naming issues with template parameters in JSON (not consistent with blueprint, e.g. `"Table_"`). May also need to update the blueprint and galaxy-related files with the newly introduced APIs.
+
+### Possible Enhancement (Need Evaluation)
+
+- Confirm with George whether histogram template tests should remain I/O-oriented only or expand to handled-validation coverage.
+- UI follow-up for long axis labels: allow abbreviation of labels; label-level fontsize setting.
+- Output plot-related data in addition to the existing hist_data dataframe. e.g. add another column of the actual `stat` (e.g. `frequency`) in addition to the `count`.
+- `kwargs` expansion:
+    - Allow more seaborn `kwargs`;
+    - Allow more values for existing `kwargs`;
+    - A special case is `KDE`: this requires raw data plotting rather than pre-computed hist data by `calculate_histogram` function.
+- External-`ax` support for group-separate plotting (`group_by` is not `None`, `together=False`), including for facet mode.
+
+### Possible Refactor (Need Evaluation)
+
+- Refactor/simplify helper functions inside `histogram` function, and decide whether to relocate to module-level or `utils` folder (with unittests).
+- Double-check facet geometry derivation flow in histogram function. Current derivation uses a complex algorithm.
+- Double-check layout settings for facet mode in histogram template. Current algorithm uses magic numbers to solve overlapping between titles and subplots.
 
 ---
 
