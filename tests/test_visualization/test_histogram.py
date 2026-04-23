@@ -99,8 +99,8 @@ class TestHistogram(unittest.TestCase):
         bin_edges = list(np.linspace(0.5, 100.5, 101))
 
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             bins=bin_edges
         ).values()
 
@@ -125,7 +125,7 @@ class TestHistogram(unittest.TestCase):
 
     def test_histogram_annotation(self):
         fig, ax, df = histogram(
-            self.adata, 
+            self.adata,
             annotation='annotation1'
         ).values()
         total_annotation = len(self.adata.obs['annotation1'])
@@ -193,8 +193,8 @@ class TestHistogram(unittest.TestCase):
         ].flatten()
 
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             x_log_scale=True
         ).values()
 
@@ -220,8 +220,8 @@ class TestHistogram(unittest.TestCase):
         self.adata.X[0, self.adata.var_names.get_loc('marker1')] = -1
 
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             x_log_scale=True
         ).values()
 
@@ -238,21 +238,21 @@ class TestHistogram(unittest.TestCase):
     def test_title(self):
         """Test that title changes based on 'layer' information"""
         fig, ax, df = histogram(
-            self.adata, 
+            self.adata,
             feature='marker1'
         ).values()
         self.assertEqual(ax.get_title(), 'Layer: Original')
 
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             layer='Default'
         ).values()
         self.assertEqual(ax.get_title(), f'Layer: Default')
 
         fig, ax, df =  histogram(
-            self.adata, 
-            annotation='annotation1', 
+            self.adata,
+            annotation='annotation1',
             layer='Default'
         ).values()
         self.assertEqual(ax.get_title(), '')
@@ -260,8 +260,8 @@ class TestHistogram(unittest.TestCase):
     def test_y_log_scale_axis(self):
         """Test that y_log_scale sets y-axis to log scale."""
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             y_log_scale=True
         ).values()
         self.assertEqual(ax.get_yscale(), 'log')
@@ -269,8 +269,8 @@ class TestHistogram(unittest.TestCase):
     def test_y_log_scale_label(self):
         """Test that y-axis label is updated when y_log_scale is True."""
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             y_log_scale=True
         ).values()
         self.assertEqual(ax.get_ylabel(), 'log(Count)')
@@ -279,31 +279,31 @@ class TestHistogram(unittest.TestCase):
         """Test that y-axis label changes based on the 'stat' parameter."""
         # Test default stat ('count')
         fig, ax, df = histogram(
-            self.adata, 
+            self.adata,
             feature='marker1'
         ).values()
         self.assertEqual(ax.get_ylabel(), 'Count')
 
         # Test 'frequency' stat
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             stat='frequency'
         ).values()
         self.assertEqual(ax.get_ylabel(), 'Frequency')
 
         # Test 'density' stat
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             stat='density'
         ).values()
         self.assertEqual(ax.get_ylabel(), 'Density')
 
         # Test 'probability' stat
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             stat='probability'
         ).values()
         self.assertEqual(ax.get_ylabel(), 'Probability')
@@ -408,6 +408,31 @@ class TestHistogram(unittest.TestCase):
                         together=True,
                         max_groups=value,
                     )
+
+    def test_non_grouped_max_groups_is_ignored(self):
+        """Non-grouped calls should ignore grouped-only max_groups hints."""
+        baseline_fig, baseline_ax, _ = histogram(
+            self.adata,
+            feature='marker1',
+        ).values()
+
+        fig, ax, _ = histogram(
+            self.adata,
+            feature='marker1',
+            max_groups=0,
+        ).values()
+        self.assertAlmostEqual(
+            fig.get_figwidth(),
+            baseline_fig.get_figwidth(),
+            places=6,
+        )
+        self.assertAlmostEqual(
+            fig.get_figheight(),
+            baseline_fig.get_figheight(),
+            places=6,
+        )
+        self.assertGreater(len(ax.patches), 0)
+        self.assertEqual(len(ax.patches), len(baseline_ax.patches))
 
     def test_overlay_options(self):
         fig, ax, df = histogram(
@@ -545,8 +570,8 @@ class TestHistogram(unittest.TestCase):
         custom_bins = 10  # Specify number of bins as an integer
 
         fig, ax, df = histogram(
-            self.adata, 
-            feature='marker1', 
+            self.adata,
+            feature='marker1',
             bins=custom_bins
         ).values()
 
@@ -909,6 +934,43 @@ class TestHistogram(unittest.TestCase):
         self.assertAlmostEqual(fig.get_figwidth(), 10.0, places=2)
         self.assertAlmostEqual(fig.get_figheight(), 4.0, places=2)
 
+    def test_non_facet_layout_hints_are_ignored(self):
+        """Non-facet calls should ignore all facet-only layout hints."""
+        baseline_fig, baseline_ax, _ = histogram(
+            self.adata,
+            feature='marker1',
+            facet=False,
+        ).values()
+
+        for hint_kwargs in (
+            {'facet_fig_width': 8, 'facet_fig_height': 5},
+            {
+                'facet_ncol': 0,
+                'facet_tick_rotation': 'bad',
+                'facet_fig_width': 'wide',
+                'facet_fig_height': 'tall',
+            },
+        ):
+            with self.subTest(hints=hint_kwargs):
+                fig, ax, _ = histogram(
+                    self.adata,
+                    feature='marker1',
+                    facet=False,
+                    **hint_kwargs,
+                ).values()
+                self.assertAlmostEqual(
+                    fig.get_figwidth(),
+                    baseline_fig.get_figwidth(),
+                    places=6,
+                )
+                self.assertAlmostEqual(
+                    fig.get_figheight(),
+                    baseline_fig.get_figheight(),
+                    places=6,
+                )
+                self.assertGreater(len(ax.patches), 0)
+                self.assertEqual(len(ax.patches), len(baseline_ax.patches))
+
     def test_facet_plot_shared_bins_consistency_numeric(self):
         """Numeric facets keep shared bins for int/default-like bins inputs."""
         # Unbalanced groups: each group occupies only part of the global range.
@@ -973,7 +1035,7 @@ class TestHistogram(unittest.TestCase):
                         np.array_equal(np.round(np.array(axis.get_yticks()), 6), first_yticks),
                         "Facet numeric y-ticks should remain shared across panels."
                     )
-                
+
                 # Check that the returned DataFrame has expected structure and content
                 self.assertEqual(
                     set(df.columns),
@@ -1051,7 +1113,7 @@ class TestHistogram(unittest.TestCase):
                 np.array_equal(np.round(np.array(axis.get_yticks()), 6), first_yticks),
                 "Facet categorical y-ticks should remain shared across panels."
             )
-        
+
         # Check that the returned DataFrame has expected structure and content
         self.assertEqual(
             set(df.columns),

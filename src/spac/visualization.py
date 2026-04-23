@@ -26,7 +26,7 @@ import base64
 import time
 import json
 import re
-from typing import Dict, List, Union, Optional 
+from typing import Dict, List, Union, Optional
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatch
 from functools import partial
@@ -573,7 +573,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
 
     ax : matplotlib.axes.Axes, optional
         An existing Axes object to draw the plot onto, optional.
-        Not supported for grouped-separate (`group_by` with `together=False`) 
+        Not supported for grouped-separate (`group_by` with `together=False`)
         or facet layouts (`group_by` with `facet=True`).
 
     x_log_scale : bool, default False
@@ -625,18 +625,21 @@ def histogram(adata, feature=None, annotation=None, layer=None,
             If not provided, or if passed as `None`/`"auto"`/`"none"`,
             the binning will be determined automatically using the Rice rule.
             Note, don't pass a numpy array, only python lists or strs/numbers.
-        
-        When `group_by` is provided, this optional key can be passed via `kwargs`:
-        - `max_groups`: positive int or "unlimited", maximum number of groups to plot.
-            Default is 20 when omitted. 
-            Caution: `"unlimited"` disables this guardrail, but may lead to
-            performance issues or unreadable plots with many groups.
-        
-        When `facet=True`, these optional key can be passed via `kwargs`
-        to customize FacetGrid layout:
-        - `facet_ncol`: positive int or "auto", number of facet columns.
-            If "auto", the function uses one column for small group counts and
-            switches to a compact grid for many groups.
+
+        When `group_by` is provided, this optional key can be passed via
+        `kwargs` (it is ignored otherwise):
+        - `max_groups`: Controls the group-count guardrail for grouped plots.
+            Default is 20 when omitted. Pass `"unlimited"` to disable this
+            guardrail, which may lead to performance issues or unreadable plots
+            with many groups.
+
+        When `facet=True`, these optional keys can be passed via `kwargs`
+        to customize FacetGrid layout (they are ignored otherwise):
+        - `facet_ncol`: Controls facet column wrapping.
+            If omitted or passed as `"auto"`, the function uses one column for
+            small group counts and switches to a compact grid for many groups.
+            Otherwise, the provided value is used to request the facet column
+            count.
         - `facet_fig_width`: float, intended final figure width in inches.
         - `facet_fig_height`: float, intended final figure height in inches.
         - `facet_tick_rotation`: float, rotation angle in degrees for x tick labels.
@@ -707,7 +710,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
         else:
             df[data_column] = np.log1p(df[data_column])
 
-    # If ax is provided, validate input and get figure from it. 
+    # If ax is provided, validate input and get figure from it.
     # If not, the figure will be created in the plotting branch.
     if ax is not None:
         if group_by and not together:
@@ -754,7 +757,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
         if together:
             raise ValueError("Cannot use together=True with facet=True,"
                             " choose one.")
-    
+
     def _parse_optional_number(
         name,
         value,
@@ -798,44 +801,61 @@ def histogram(adata, feature=None, annotation=None, layer=None,
             )
         return parsed
 
-    # Parse max_groups with "unlimited" handling and validation.
-    max_groups = _parse_optional_number(
-        "max_groups",
-        kwargs.pop('max_groups', None),
-        kind=int,
-        default=20,
-        positive=True,
-        tokens={"unlimited": float('inf')},
-    )
+    # Pop grouped/facet-only hints early so they never leak to seaborn.
+    max_groups_raw = kwargs.pop('max_groups', None)
+    facet_ncol_raw = kwargs.pop('facet_ncol', None)
+    facet_fig_width_raw = kwargs.pop('facet_fig_width', None)
+    facet_fig_height_raw = kwargs.pop('facet_fig_height', None)
+    facet_tick_rotation_raw = kwargs.pop('facet_tick_rotation', None)
 
-    # Parse facet layout hints so they never leak to seaborn.
-    facet_ncol = _parse_optional_number(
-        "facet_ncol",
-        kwargs.pop('facet_ncol', None),
-        kind=int,
-        positive=True,
-        tokens={"": None, "auto": None, "none": None},
-    )
-    facet_fig_width = _parse_optional_number(
-        "facet_fig_width",
-        kwargs.pop('facet_fig_width', None),
-        positive=True,
-    )
-    facet_fig_height = _parse_optional_number(
-        "facet_fig_height",
-        kwargs.pop('facet_fig_height', None),
-        positive=True,
-    )
-    if (facet_fig_width is None) != (facet_fig_height is None):
-        raise ValueError(
-            "Both facet_fig_width and facet_fig_height must be provided together, "
-            "or both must be left as None."
+    # Parse max_groups only for grouped plots; otherwise ignore it entirely.
+    if group_by:
+        max_groups = _parse_optional_number(
+            "max_groups",
+            max_groups_raw,
+            kind=int,
+            default=20,
+            positive=True,
+            tokens={"unlimited": float('inf')},
         )
-    facet_tick_rotation = _parse_optional_number(
-        "facet_tick_rotation",
-        kwargs.pop('facet_tick_rotation', None),
-        default=0.0,
-    ) % 360.0
+    else:
+        max_groups = None
+
+    # Parse facet layout hints only in facet mode.
+    if facet:
+        facet_ncol = _parse_optional_number(
+            "facet_ncol",
+            facet_ncol_raw,
+            kind=int,
+            positive=True,
+            tokens={"": None, "auto": None, "none": None},
+        )
+        facet_fig_width = _parse_optional_number(
+            "facet_fig_width",
+            facet_fig_width_raw,
+            positive=True,
+        )
+        facet_fig_height = _parse_optional_number(
+            "facet_fig_height",
+            facet_fig_height_raw,
+            positive=True,
+        )
+        if (facet_fig_width is None) != (facet_fig_height is None):
+            raise ValueError(
+                "Both facet_fig_width and facet_fig_height must be provided together, "
+                "or both must be left as None."
+            )
+        facet_tick_rotation = _parse_optional_number(
+            "facet_tick_rotation",
+            facet_tick_rotation_raw,
+            default=0.0,
+        ) % 360.0
+    else:
+        # If not faceting, ignore all facet-only hints.
+        facet_ncol = None
+        facet_fig_width = None
+        facet_fig_height = None
+        facet_tick_rotation = None
 
     # Function to calculate histogram data
     def calculate_histogram(data, bins, bin_edges=None):
@@ -1040,7 +1060,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
         else:
             # 'multiple' parameter is not applicable
             kwargs.pop('multiple', None)
-            
+
             if not facet:
                 fig, ax_array = plt.subplots(
                     n_groups, 1, figsize=(5, 5 * n_groups)
@@ -1104,7 +1124,7 @@ def histogram(adata, feature=None, annotation=None, layer=None,
                     height=facet_layout['facet_height'],
                     aspect=facet_layout['facet_aspect'],
                     sharex=True,
-                    sharey=True,   
+                    sharey=True,
                 )
 
                 # Map the histogram function to the grid
