@@ -2,14 +2,109 @@
 
 ## Code Review
 
-### Task CR.4. Dedicated PR Summary for Histogram Facet Changes
-Location: local/docs/feat/histogram-facet/, pull request summary
+### Task CR.7. Histogram Visualization Documentation Consistency Cleanup
+Location: src/spac/visualization.py
 
-Status: Postponed
+Status: Done
+
+Implementation remarks:
+- Keep this follow-up documentation-only and confined to
+  `src/spac/visualization.py`.
+- Use fuller NumPy-style docstrings only for helpers with a real data/return
+  contract, and keep tiny histogram-local utilities to one-sentence
+  docstrings.
+- Align `_derive_facet_geometry()` comments and helper wording with the live
+  fallback geometry behavior rather than older phrasing.
+- Remove redundant comment noise where the surrounding control flow already
+  makes the behavior clear.
 
 Action items:
-- [ ] Write a concise dedicated PR summary that explicitly covers histogram facet behavior, template-boundary changes, validation/guardrail changes, return-data contract changes, and focused test updates.
-- [ ] Keep the summary consistent with the actual diff and exclude deferred future-work items.
+- [x] Tighten the public `histogram()` docstring for facet behavior and
+  grouped-only/facet-only keyword semantics.
+- [x] Standardize nested helper docstrings inside `histogram()` to a more
+  consistent contract-based style.
+- [x] Update `_derive_facet_geometry()` docstring/comment wording so it matches
+  the current long-label geometry behavior.
+- [x] Simplify or remove redundant inline comments that restate obvious control
+  flow.
+
+### Task CR.6. Conditional Forwarding of Grouped-Only and Facet-Only Template Hints
+Location: src/spac/templates/histogram_template.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this cleanup at the template boundary.
+- The committed slice finished the facet-only-hint half of this task first.
+- The current staged slice completes the grouped-only `Max_Groups` cleanup and
+  the matching direct-call regression coverage.
+- `Max_Groups` is grouped-only and should not be forwarded when `Group_by`
+  is unset.
+- `Facet_Ncol` is facet-only and should be ignored at the template boundary
+  when `Facet=False` rather than validating an irrelevant non-facet input.
+- `facet_ncol`, `facet_fig_width`, `facet_fig_height`, and
+  `facet_tick_rotation` are facet-only hints and should not be forwarded to
+  `histogram()` when `Facet=False`.
+- Keep `Figure_Width` / `Figure_Height` themselves outside this rule because
+  they still define final non-facet figure sizing at the template layer.
+- Keep `X_Axis_Label_Rotation` outside this rule because the template applies
+  it to all returned axes after plotting, not only to facet layouts.
+
+Action items:
+- [x] Remove `max_groups` from the base template `hist_kwargs` dict and add it
+  only when `group_by` is set.
+- [x] Validate and forward `facet_ncol` only when `facet=True`; ignore it when
+  `facet=False`.
+- [x] Forward `facet_fig_width`, `facet_fig_height`, and
+  `facet_tick_rotation` only when `facet=True`.
+- [x] Keep grouped/facet active-mode behavior unchanged, including current
+  validation when the relevant mode is enabled.
+- [x] Verify ungrouped/non-facet template calls ignore irrelevant grouped/facet
+  hints while grouped/facet template calls still enforce the current contract.
+
+### Task CR.5. Template Zero-Value Figure-Size Validation
+Location: src/spac/templates/histogram_template.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this follow-up at the template boundary only: `Figure_Width` /
+  `Figure_Height` are user-facing template parameters, while core
+  `facet_fig_width` / `facet_fig_height` remain facet-only hints.
+- Replace truthiness-based figure-size validation with explicit `None` checks
+  so an entered zero now fails fast instead of being silently ignored.
+- Keep facet `"auto"` figure sizing valid by preserving conditional
+  post-histogram `fig.set_size_inches(...)` behavior.
+- Do not broaden this PR follow-up into typed-field string-coercion cleanup or
+  non-I/O template validation test expansion.
+
+Action items:
+- [x] Update template-side `Figure_Width` / `Figure_Height` positive-value
+  validation to reject explicit zero inputs.
+- [x] Keep facet `Figure_Width="auto"` / `Figure_Height="auto"` behavior
+  unchanged by leaving final template-side figure sizing conditional.
+- [x] Re-verify the template I/O path and the direct repro cases for zero-width
+  rejection and facet auto sizing.
+
+### Task CR.4. Dedicated PR Summary for Histogram Facet Changes
+Location: local/docs/feat/histogram-facet/pr-summary.md, pull request summary
+
+Status: Done
+
+Implementation remarks:
+- Keep the summary concise and reviewer-facing.
+- Follow the repo's usual brief `Summary`/`Changes` PR-body style, but add
+  explicit testing and review-order notes because this histogram diff is
+  larger than the typical body in the repo.
+- Keep the text grounded in the actual `upstream/dev...HEAD` diff and exclude
+  deferred future-work items.
+
+Action items:
+- [x] Write a concise dedicated PR summary that explicitly covers histogram
+  facet behavior, template-boundary changes, validation/guardrail changes,
+  return-data contract changes, and focused test updates.
+- [x] Keep the summary consistent with the actual diff and exclude deferred
+  future-work items.
 
 ### Task CR.3. Formatting Cleanup for Review Readiness
 Location: src/spac/visualization.py, src/spac/templates/histogram_template.py, src/spac/utils.py, tests/test_visualization/test_histogram.py
@@ -50,6 +145,24 @@ Action items:
 
 
 ## Development
+
+### Task 22. Unused Import Cleanup in Touched Histogram Modules
+Location: src/spac/utils.py, src/spac/visualization.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this cleanup minimal and non-behavioral.
+- Limit the change to imports and logger declarations made obsolete by the
+  histogram facet refactors and documentation cleanup already in scope.
+- Avoid broader style or typing cleanup outside the touched modules.
+
+Action items:
+- [x] Remove the unused `Any` typing import and unused module-level `logger`
+  assignment from `src/spac/utils.py`.
+- [x] Remove the unused `Optional` typing import from
+  `src/spac/visualization.py`.
+- [x] Keep surrounding histogram behavior unchanged.
 
 ### Task 21. Template Validation Convention Audit and Alignment
 Location: src/spac/templates/histogram_template.py, src/spac/templates/template_utils.py, src/spac/visualization.py

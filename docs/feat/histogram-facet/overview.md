@@ -21,12 +21,13 @@ This plan now serves as the completed implementation record for histogram facet 
   - [Decisions](./decisions.md)
   - [Implementation Log](./implementation-log.md)
   - [Code Review 2026-04-21](./code-review-2026-04-21.md)
+  - [PR Summary Draft](./pr-summary.md)
 
 ---
 
 ## Immediate Next Step
 
-Issue 1. Fix template `Figure_Width` / `Figure_Height` zero-value validation, then Issue 2. Stop forwarding irrelevant template `Max_Groups` when `Group_by` is unset.
+None currently.
 
 ## Progress
 
@@ -36,7 +37,17 @@ None currently.
 ### Remaining Tasks
 None currently.
 
+### Postponed Tasks
+None currently.
+
+### Dropped Tasks
+CR.3. Formatting cleanup for review readiness.
+
 ### Addressed Tasks
+CR.4. Dedicated PR summary for histogram facet changes.
+CR.7. Histogram visualization documentation consistency cleanup.
+CR.6. Conditional forwarding of grouped-only and facet-only template hints.
+CR.5. Template zero-value figure-size validation.
 CR.2. Ignore facet-only size hints when `facet=False`.
 CR.1. Documentation/review alignment for `max_groups` and `facet_ncol` direct-call edge cases.
 1. Shared Global Bins Helper.
@@ -60,10 +71,10 @@ CR.1. Documentation/review alignment for `max_groups` and `facet_ncol` direct-ca
 19. Numeric-Annotation Facet Smoke Coverage.
 20. Plotting-Control Validation Simplification.
 21. Template Validation Convention Audit and Alignment.
+22. Unused Import Cleanup in Touched Histogram Modules.
 
 ### Issues (Open)
-1. Template `Figure_Width` / `Figure_Height` validation currently uses truthiness, so an explicit zero can bypass the positive-value check and silently fall back to the default figure size instead of raising.
-2. Template `Max_Groups` is still forwarded when `Group_by` is unset, so an ungrouped template call can fail on an irrelevant `Max_Groups` value instead of ignoring it.
+None currently.
 
 ---
 
@@ -80,10 +91,10 @@ CR.1. Documentation/review alignment for `max_groups` and `facet_ncol` direct-ca
    - Facet and facet_ncol are exposed as user controls.
    - Figure size contract remains at template layer and is passed internally as `facet_fig_width` / `facet_fig_height` hints.
    - `Figure_Width` / `Figure_Height` may remain `"auto"` in facet mode so core geometry can size the figure automatically.
-   - Template keeps bins policy and layout-hint normalization at the boundary, while seaborn-native plotting controls are forwarded with lighter validation.
+   - Template keeps bins policy and layout-hint normalization at the boundary, forwards `multiple` only for grouped same-axis overlays, and ignores grouped/facet-only hints when their modes are inactive.
 3. Current focused test state (tests/test_visualization/test_histogram.py):
-   - Current focused verification remains green for targeted histogram/template checks after grouped-bin cleanup and test compression (`52 passed, 1 warning`).
-   - Task 11 implementation is now present in code and covered by focused histogram regressions.
+   - Focused histogram/helper/template verification is green at current `HEAD` (`54 passed, 3 warnings`) across `tests/test_visualization/test_histogram.py`, `tests/test_visualization/test_derive_facet_geometry.py`, and `tests/templates/test_histogram_template.py`.
+   - The latest follow-up commits kept Task 20's overlay-only `multiple` rule aligned at the template boundary and removed unused imports in touched histogram modules without changing behavior.
 
 ### Codebase Pattern Findings (Concise)
 1. Visualization-specific shared logic should stay in visualization.py module-level helpers.
@@ -110,11 +121,12 @@ See [implementation-log.md](./implementation-log.md) for the full dated implemen
 - Fix bugs in `together=False`, `facet=False` branch:
     - Incorrect output `hist_data` (currently repeatedly rewrote during the loop);
     - Overlapping label issues for long labels -> may reuse or imitate the facet geometry derivation logic.
-- Naming issues with template parameters in JSON (not consistent with blueprint, e.g. `"Table_"`). May also need to update the blueprint and galaxy-related files with the newly introduced APIs.
+- Naming issues with template parameters in JSON (not consistent with template tests as well as the blueprint, e.g. `"Table_"`). 
 
 ### Possible Enhancement (Need Evaluation)
 
 - Confirm with George whether histogram template tests should remain I/O-oriented only or expand to handled-validation coverage.
+- Blueprint follow-up: decide whether histogram should keep the current broader template/core support (for example, new facet controls and `stat="proportion"`) or align to a stricter blueprint/UI contract by either removing unsupported options or expanding the blueprint, Galaxy XML, and related UI definitions.
 - UI follow-up for long axis labels: allow abbreviation of labels; label-level fontsize setting.
 - Output plot-related data in addition to the existing hist_data dataframe. e.g. add another column of the actual `stat` (e.g. `frequency`) in addition to the `count`.
 - `kwargs` expansion:

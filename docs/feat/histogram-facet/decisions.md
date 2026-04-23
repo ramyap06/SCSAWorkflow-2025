@@ -1,5 +1,55 @@
 # Decisions
 
+### D46. Convert the Remaining Template Issue Into Task CR.6
+Date: 2026-04-22
+Decision:
+Track the remaining template-boundary follow-up as `Task CR.6`, scoped as
+conditional forwarding of grouped-only and facet-only template hints.
+
+Details:
+- Remove the remaining open issue from the overview and represent the work as a
+  code-review follow-up task instead.
+- Treat `Max_Groups` as grouped-only: forward it only when `Group_by` is set.
+- Treat `Facet_Ncol` as facet-only: ignore and do not validate it when
+  `Facet=False`, and validate/forward it only when `Facet=True`.
+- Treat `facet_fig_width`, `facet_fig_height`, and `facet_tick_rotation` as
+  facet-only forwarded hints: pass them to `histogram()` only when
+  `Facet=True`.
+- Keep `Figure_Width` / `Figure_Height` themselves outside this cleanup
+  because they still control final figure sizing for non-facet template calls.
+- Keep `X_Axis_Label_Rotation` outside this cleanup because template-side
+  post-processing applies it to all returned axes, not only to facet plots.
+
+Rationale:
+This keeps the overview index and companion task record aligned, and it keeps
+the template/core boundary cleaner by avoiding irrelevant kwargs and validation
+paths when grouped or facet mode is inactive.
+
+### D45. Keep the Figure-Size Zero-Value Fix Narrow and Template-Scoped
+Date: 2026-04-22
+Decision:
+Resolve the `Figure_Width` / `Figure_Height` zero-value bug at the template
+boundary only, without expanding this follow-up into broader typed-field input
+normalization or template-validation test policy changes.
+
+Details:
+- Fix the template-side truthiness bug so explicit zero values for
+  `Figure_Width` / `Figure_Height` raise instead of being silently ignored.
+- Keep `histogram()` core behavior unchanged for non-facet calls; the
+  `facet_fig_width` / `facet_fig_height` kwargs remain facet-only hints and are
+  intentionally ignored when `facet=False`.
+- Keep facet `"auto"` figure sizing valid by preserving conditional final
+  template-side figure sizing.
+- Do not use this fix to introduce broader string-to-number coercion changes
+  for typed template fields such as `Figure_DPI` or `X_Axis_Label_Rotation`.
+- Keep template tests I/O-oriented for this PR; verify the specific fix with
+  the existing template I/O test plus direct local repro commands.
+
+Rationale:
+The bug is a real user-facing template contract break, but the surrounding
+typed-field parsing and template-test-scope questions are broader repository
+patterns that would expand the PR beyond the current review-driven fix.
+
 ### D44. Drop the Remaining CR.3 Clean-Result Follow-Up
 Date: 2026-04-22
 Decision:

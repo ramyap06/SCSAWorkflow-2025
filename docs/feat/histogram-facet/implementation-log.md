@@ -1,6 +1,102 @@
 # Implementation Log
 
+### 2026-04-23
+
+- Completed Task CR.4 (dedicated PR summary for histogram facet changes).
+   - Time: 01:12
+   - Added `docs/feat/histogram-facet/pr-summary.md` as a concise
+     reviewer-facing draft body for the current histogram facet PR.
+   - Kept the structure close to the repo's usual brief `Summary`/`Changes`
+     PR-body pattern, while adding explicit testing and review-order notes to
+     make the larger histogram diff easier to review.
+   - Verification:
+      - Reviewed current PR/repo body patterns in `FNLCR-DMAP/SCSAWorkflow`
+        (`#428`, `#329`, `#328`, `#280`).
+      - Cross-checked the summary against `CONTRIBUTING.md` and
+        `git diff --stat upstream/dev...HEAD`.
+
+- Refined Task 20 (plotting-control validation simplification) with
+  template-side overlay-only `multiple` normalization.
+   - Time: 01:00
+   - Gated template-side `multiple` normalization behind `group_by and
+     together` so the template only touches `multiple` when same-axes grouped
+     overlays are active.
+   - Kept grouped-separate and facet paths from normalizing an irrelevant
+     `multiple` value before conditional forwarding.
+   - Verification:
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_visualization/test_histogram.py tests/test_visualization/test_derive_facet_geometry.py tests/templates/test_histogram_template.py -q` (54 passed, 3 warnings)
+
+- Completed Task 22 (unused import cleanup in touched histogram modules).
+   - Time: 00:59
+   - Removed the unused `Any` typing import and unused module-level `logger`
+     assignment from `src/spac/utils.py`.
+   - Removed the unused `Optional` typing import from
+     `src/spac/visualization.py`.
+   - Kept the cleanup non-behavioral and limited to files already in scope for
+     this PR.
+   - Verification:
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_visualization/test_histogram.py tests/test_visualization/test_derive_facet_geometry.py tests/templates/test_histogram_template.py -q` (54 passed, 3 warnings)
+
+- Completed Task CR.7 (histogram visualization documentation consistency
+  cleanup).
+   - Time: 00:15
+   - Tightened the public `histogram()` docstring so facet behavior and
+     grouped-only/facet-only keyword semantics are described more explicitly.
+   - Standardized the nested helper docstrings inside `histogram()` to a more
+     consistent contract-based style, keeping the larger data-contract helpers
+     fuller and the tiny local utilities concise.
+   - Updated `_derive_facet_geometry()` wording and nearby inline comments to
+     match the current long-label fallback geometry behavior without changing
+     plotting logic.
+   - Verification:
+      - `conda run -n spac python -m pytest tests/test_visualization/test_histogram.py -q` (46 passed)
+      - `git diff --check -- src/spac/visualization.py` (clean)
+
 ### 2026-04-22
+
+- Completed Task CR.6 with the staged grouped-only-hint cleanup slice.
+   - Time: 23:04
+   - Removed unconditional `max_groups` forwarding from the template and now
+     add it only when `Group_by` is active.
+   - Updated `histogram()` to pop `max_groups` early and parse it only for
+     grouped plots, keeping non-grouped direct calls from validating irrelevant
+     grouped-only hints.
+   - Added a focused regression test showing non-grouped calls ignore
+     `max_groups`.
+   - Verification on staged-only snapshot:
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_visualization/test_histogram.py -q` (46 passed)
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/templates/test_histogram_template.py -q` (1 passed, 1 warning)
+
+- Advanced Task CR.6 with the committed facet-only-hint gating slice.
+   - Time: 22:55
+   - Updated the template and `histogram()` core so facet-only layout hints are
+     ignored when `facet=False`, while facet-mode validation and paired
+     figure-size-hint behavior remain active when `facet=True`.
+   - Kept the committed change focused on the facet-only half of `CR.6`; the
+     remaining grouped-only `Max_Groups` cleanup is still open.
+   - Tightened the template-side `Figure_Width` / `Figure_Height` truthiness
+     check in the same committed diff so explicit zero values no longer bypass
+     validation.
+   - Simplified non-facet ignored-hints regression coverage in
+     `tests/test_visualization/test_histogram.py`.
+   - Verification on clean `HEAD` snapshot:
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_visualization/test_histogram.py -q` (45 passed)
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/templates/test_histogram_template.py -q` (1 passed, 1 warning)
+
+- Completed Task CR.5 (template zero-value figure-size validation).
+   - Time: 18:29
+   - Updated template-side `Figure_Width` / `Figure_Height` validation to use
+     explicit `None` checks so zero values now raise instead of bypassing the
+     positive-value check through truthiness.
+   - Kept final template-side figure sizing conditional so facet
+     `Figure_Width="auto"` / `Figure_Height="auto"` still defer to derived core
+     geometry.
+   - Kept this review follow-up narrow: no broader typed-field string parsing
+     cleanup and no expansion of template tests beyond the current I/O-focused
+     contract.
+   - Verification:
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache conda run -n spac python -m pytest tests/templates/test_histogram_template.py -q` (1 passed)
+      - Local direct repro: `Figure_Width=0`, `Figure_Height=4` now raises `ValueError`; facet `Figure_Width="auto"`, `Figure_Height="auto"` still succeeds with derived figure sizing.
 
 - Advanced Task CR.3 (formatting cleanup for review readiness) with a narrowed whitespace-only redo.
    - Time: 01:40
