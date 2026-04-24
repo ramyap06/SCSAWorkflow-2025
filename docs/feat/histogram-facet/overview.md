@@ -22,6 +22,7 @@ This plan now serves as the completed implementation record for histogram facet 
   - [Implementation Log](./implementation-log.md)
   - [Code Review 2026-04-21](./code-review-2026-04-21.md)
   - [PR Summary Draft](./pr-summary.md)
+  - [PR Summary Details](./pr-summary-details.md)
 
 ---
 
