@@ -1,0 +1,461 @@
+# Task Details
+
+## Code Review
+
+### Task CR.7. Histogram Visualization Documentation Consistency Cleanup
+Location: src/spac/visualization.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this follow-up documentation-only and confined to
+  `src/spac/visualization.py`.
+- Use fuller NumPy-style docstrings only for helpers with a real data/return
+  contract, and keep tiny histogram-local utilities to one-sentence
+  docstrings.
+- Align `_derive_facet_geometry()` comments and helper wording with the live
+  fallback geometry behavior rather than older phrasing.
+- Remove redundant comment noise where the surrounding control flow already
+  makes the behavior clear.
+
+Action items:
+- [x] Tighten the public `histogram()` docstring for facet behavior and
+  grouped-only/facet-only keyword semantics.
+- [x] Standardize nested helper docstrings inside `histogram()` to a more
+  consistent contract-based style.
+- [x] Update `_derive_facet_geometry()` docstring/comment wording so it matches
+  the current long-label geometry behavior.
+- [x] Simplify or remove redundant inline comments that restate obvious control
+  flow.
+
+### Task CR.6. Conditional Forwarding of Grouped-Only and Facet-Only Template Hints
+Location: src/spac/templates/histogram_template.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this cleanup at the template boundary.
+- The committed slice finished the facet-only-hint half of this task first.
+- The current staged slice completes the grouped-only `Max_Groups` cleanup and
+  the matching direct-call regression coverage.
+- `Max_Groups` is grouped-only and should not be forwarded when `Group_by`
+  is unset.
+- `Facet_Ncol` is facet-only and should be ignored at the template boundary
+  when `Facet=False` rather than validating an irrelevant non-facet input.
+- `facet_ncol`, `facet_fig_width`, `facet_fig_height`, and
+  `facet_tick_rotation` are facet-only hints and should not be forwarded to
+  `histogram()` when `Facet=False`.
+- Keep `Figure_Width` / `Figure_Height` themselves outside this rule because
+  they still define final non-facet figure sizing at the template layer.
+- Keep `X_Axis_Label_Rotation` outside this rule because the template applies
+  it to all returned axes after plotting, not only to facet layouts.
+
+Action items:
+- [x] Remove `max_groups` from the base template `hist_kwargs` dict and add it
+  only when `group_by` is set.
+- [x] Validate and forward `facet_ncol` only when `facet=True`; ignore it when
+  `facet=False`.
+- [x] Forward `facet_fig_width`, `facet_fig_height`, and
+  `facet_tick_rotation` only when `facet=True`.
+- [x] Keep grouped/facet active-mode behavior unchanged, including current
+  validation when the relevant mode is enabled.
+- [x] Verify ungrouped/non-facet template calls ignore irrelevant grouped/facet
+  hints while grouped/facet template calls still enforce the current contract.
+
+### Task CR.5. Template Zero-Value Figure-Size Validation
+Location: src/spac/templates/histogram_template.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this follow-up at the template boundary only: `Figure_Width` /
+  `Figure_Height` are user-facing template parameters, while core
+  `facet_fig_width` / `facet_fig_height` remain facet-only hints.
+- Replace truthiness-based figure-size validation with explicit `None` checks
+  so an entered zero now fails fast instead of being silently ignored.
+- Keep facet `"auto"` figure sizing valid by preserving conditional
+  post-histogram `fig.set_size_inches(...)` behavior.
+- Do not broaden this PR follow-up into typed-field string-coercion cleanup or
+  non-I/O template validation test expansion.
+
+Action items:
+- [x] Update template-side `Figure_Width` / `Figure_Height` positive-value
+  validation to reject explicit zero inputs.
+- [x] Keep facet `Figure_Width="auto"` / `Figure_Height="auto"` behavior
+  unchanged by leaving final template-side figure sizing conditional.
+- [x] Re-verify the template I/O path and the direct repro cases for zero-width
+  rejection and facet auto sizing.
+
+### Task CR.4. Dedicated PR Summary for Histogram Facet Changes
+Location: local/docs/feat/histogram-facet/pr-summary.md, pull request summary
+
+Status: Done
+
+Implementation remarks:
+- Keep the summary concise and reviewer-facing.
+- Follow the repo's usual brief `Summary`/`Changes` PR-body style, but add
+  explicit testing and review-order notes because this histogram diff is
+  larger than the typical body in the repo.
+- Keep the text grounded in the actual `upstream/dev...HEAD` diff and exclude
+  deferred future-work items.
+
+Action items:
+- [x] Write a concise dedicated PR summary that explicitly covers histogram
+  facet behavior, template-boundary changes, validation/guardrail changes,
+  return-data contract changes, and focused test updates.
+- [x] Keep the summary consistent with the actual diff and exclude deferred
+  future-work items.
+
+### Task CR.3. Formatting Cleanup for Review Readiness
+Location: src/spac/visualization.py, src/spac/templates/histogram_template.py, src/spac/utils.py, tests/test_visualization/test_histogram.py
+
+Status: Dropped
+
+Implementation remarks:
+- Redo this task narrowly: remove only literal trailing whitespace and preserve existing file line endings so the review diff does not expand into end-of-line churn.
+- Local cleanup and regression verification were completed, but the remaining branch-level clean-result closure step is now explicitly dropped.
+- Do not pursue additional whitespace-only cleanup whose main purpose is to force a clean `git diff --check upstream/dev...HEAD` result; in this PR it creates reviewer-facing GitHub diff noise instead of reducing it.
+
+Action items:
+- [x] Remove trailing whitespace in the touched files currently reported by `git diff --check`.
+
+### Task CR.2. Non-Facet Handling of Facet-Only Size Hints
+Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Ignore `facet_fig_width` / `facet_fig_height` when `facet=False` so facet-only hints do not affect non-facet direct calls.
+- [x] Keep the current paired-hint validation for actual facet mode.
+- [x] Add focused regression coverage for non-facet direct calls that pass facet-only size hints.
+
+### Task CR.1. Documentation/Review Alignment for `max_groups` and `facet_ncol` Direct-Call Edge Cases
+Location: src/spac/visualization.py, local/docs/feat/histogram-facet/
+
+Status: Done
+
+Implementation remarks:
+- Keep current `histogram()` direct-call coercion behavior unchanged in this PR.
+- Treat float-like direct-call coercion as an edge-case API behavior, while keeping the stricter template boundary as the primary user-facing contract.
+
+Action items:
+- [x] Reclassify CR.1 as documentation/review alignment only; do not add runtime validation changes in this PR.
+- [x] Keep the documented keyword behavior for `facet_ncol="auto"` and `max_groups="unlimited"` without over-promising stricter direct-call enforcement.
+- [x] Align the `histogram()` docstring and review tracking with the intended scope and template-first user-facing path.
+
+
+## Development
+
+### Task 22. Unused Import Cleanup in Touched Histogram Modules
+Location: src/spac/utils.py, src/spac/visualization.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this cleanup minimal and non-behavioral.
+- Limit the change to imports and logger declarations made obsolete by the
+  histogram facet refactors and documentation cleanup already in scope.
+- Avoid broader style or typing cleanup outside the touched modules.
+
+Action items:
+- [x] Remove the unused `Any` typing import and unused module-level `logger`
+  assignment from `src/spac/utils.py`.
+- [x] Remove the unused `Optional` typing import from
+  `src/spac/visualization.py`.
+- [x] Keep surrounding histogram behavior unchanged.
+
+### Task 21. Template Validation Convention Audit and Alignment
+Location: src/spac/templates/histogram_template.py, src/spac/templates/template_utils.py, src/spac/visualization.py
+
+Status: Done
+
+Implementation remarks:
+- Current template behavior mixes string-token normalization (`"None"`, `"auto"`) and native JSON types (bool/int/float).
+- For this PR, lock a single explicit convention for histogram template parameters:
+  - token fields are token-normalized,
+  - typed fields remain typed-first,
+  - avoid broad “string-only” coercion.
+- `Max_Groups` must follow explicit token contract and be consistent between template and core.
+- Broader repo-wide template convention cleanup is out of scope for this PR; the task closes once histogram-specific introduced behavior is audited and aligned.
+
+Action items:
+- [x] Audit histogram-template parameters and classify each as token-field vs typed-field.
+- [x] Normalize token-fields at template boundary (including `Group_by` and `Max_Groups`) using explicit token rules for the current task scope.
+- [x] Keep typed fields as typed-first and avoid adding broad `"False"/"True"/"1"` string emulation.
+- [x] Finalize current `Max_Groups` template contract for this PR: positive integer or `"unlimited"`; missing/`None`/`"None"` resolve to default `20`.
+- [x] Align `histogram()` side parsing with the same effective contract and update focused tests accordingly.
+- [x] Review `_parse_optional_number` in `histogram()` and lock one approach: keep with narrowed scope, simplify usage, or replace with explicit local parsing for current hint contracts.
+
+### Task 20. Plotting-Control Validation Simplification
+Location: src/spac/templates/histogram_template.py, src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation remarks:
+- Template-side explicit allow-list validation for `multiple`, `element`, and `stat` is not worth keeping when SPAC is not intentionally defining a narrower contract than seaborn.
+- `multiple` is only meaningful for grouped histograms drawn on the same axes.
+- Grouped-separate and facet grouped paths should ignore `multiple` instead of coercing it to `"dodge"` or raising a new SPAC-only error.
+- Since `histogram()` is also publicly callable, keep a matching defensive cleanup there for direct calls.
+
+Action items:
+- [x] Remove template-side explicit allow-list validation for `multiple`, `element`, and `stat`.
+- [x] Stop coercing grouped-separate `multiple` to `"dodge"` in the template.
+- [x] Pass `multiple` only for grouped same-axis overlays from the template.
+- [x] Add matching defensive cleanup in `histogram()` for grouped non-overlay direct calls.
+- [x] Add a focused histogram-level unittest showing grouped-separate mode ignores irrelevant `multiple`.
+
+### Task 19. Numeric-Annotation Facet Smoke Coverage
+Location: tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation remarks:
+- Numeric annotation is user-exposed and differs from numeric feature mainly at the data-source boundary (`adata.obs` instead of feature/layer selection).
+- Current coverage already exercises numeric feature facet mode and categorical annotation facet mode, so this should stay as one thin contract test rather than a heavy rendering test.
+- Recommended test shape: add one numeric annotation column to the histogram test fixture (or local test setup), call `histogram(annotation=..., group_by=..., facet=True)`, and assert only basic end-to-end behavior such as returned structure, expected facet count, and plotted bar presence.
+
+Action items:
+- [x] Add one numeric annotation input to the histogram test fixture or local test setup.
+- [x] Add one thin facet smoke unittest for numeric annotation sourced from `adata.obs`.
+- [x] Assert only structure, facet count, and non-empty plotted output.
+
+### Task 18. Facet Histogram Download DataFrame Contract
+Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this task narrow: align facet with the existing histogram count-table pattern used by the single-plot and `together=True` branches.
+- Facet should plot and return the same grouped histogram-bin count table with grouping metadata, not raw `plot_data`.
+- Do not redesign full seaborn/raw-data fidelity in this task.
+
+Action items:
+- [x] Refactor the grouped histogram-table helper so it owns shared-bin derivation for grouped count-table paths.
+- [x] Use that grouped histogram-bin table for facet plotting as well as facet return `df`.
+- [x] Keep Task 18 output count-based; do not add normalized/KDE-specific output columns in this PR.
+- [x] Preserve current facet shared-bin behavior for numeric and categorical cases under the precomputed-table path.
+- [x] Add focused tests for numeric and categorical facet return-data contracts under the count-table pattern.
+
+### Task 17. Grouped `group_by` Max-Group Guardrail Validation
+Location: src/spac/templates/histogram_template.py, src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation remarks:
+- The key failure mode is excessive group cardinality, not only dtype: even categorical labels can produce unreadable or unstable grouped plots when group count is too large.
+- Apply one grouped-mode guardrail across facet/together/separate grouped paths.
+- Use a default maximum group count (`max_groups=20`), allow explicit positive-int override, and allow disabling with `max_groups="unlimited"`.
+- Keep direct-call handling concise: explicit `max_groups=None` resolves to default threshold behavior.
+- Validation should fail fast with a clear `ValueError` message only (no additional warning) that reports observed groups, threshold, and how to override.
+
+Action items:
+- [x] Add grouped-mode guardrail validation in `histogram()` that raises when non-null unique `group_by` count exceeds `max_groups` (default `20`).
+- [x] Support `max_groups` override in `histogram()` (`int > 0`) and `"unlimited"` bypass, while resolving explicit `None` to default threshold behavior.
+- [x] Expose optional `Max_Groups` in template input handling and pass it through to `histogram()`.
+- [x] Add focused histogram tests for: default-threshold rejection, explicit larger-threshold success, `"unlimited"` bypass behavior, explicit `max_groups=None` default-threshold behavior, and representative invalid inputs.
+
+### Task 16. Facet Figure Title Layout Handling
+Location: src/spac/templates/histogram_template.py, src/spac/visualization.py
+
+Status: Done
+
+Implementation remarks:
+- The current overlap is a template/core interaction problem, not a facet panel-geometry problem alone.
+- `histogram` already owns facet panel geometry and figure-level axis labels, while the template owns the figure-level title.
+- Recommended implementation path: keep title ownership in the template, but replace the current unconditional `plt.tight_layout()` path with facet-aware figure layout handling that explicitly reserves top margin for `fig.suptitle(...)`.
+
+Action items:
+- [x] Replace the current unconditional template layout call with facet-aware layout handling that preserves top room for figure titles on dense facet grids.
+- [x] Verify the fix on a many-facet example (for example, ~14 facets) and ensure the plotting panels remain readable.
+- [x] Add or update the minimal tests or manual verification notes needed for this template-level layout change.
+
+### Task 15. Facet Layout Hint Validation Simplification
+Location: src/spac/templates/histogram_template.py, src/spac/visualization.py, tests/test_visualization/test_derive_facet_geometry.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Keep template strict about user-facing `Facet_Ncol` and figure-size inputs, including paired facet figure hints.
+- [x] Replace generic facet-hint normalization in `histogram` with explicit local parsing/validation for `facet_ncol`, `facet_fig_width`, `facet_fig_height`, and `facet_tick_rotation`.
+- [x] Keep `_derive_facet_geometry` as a pure geometry helper that consumes pre-normalized inputs.
+- [x] Remove `normalize_positive_number` and obsolete unit coverage once the facet validation contract is finalized.
+
+### Task 14. Core Input Normalization Refactor
+Location: src/spac/utils.py, src/spac/visualization.py, tests/test_utils/test_normalize_positive_number.py, tests/test_utils/test_text_to_others.py
+
+Status: Done
+
+Action items:
+- [x] Add a reusable core positive-number normalization helper with explicit logging for fallback cases.
+- [x] Refactor `_derive_facet_geometry` to use the core helper while keeping facet auto-selection logging local.
+- [x] Keep `text_to_others` behavior backward-compatible and verify existing numeric/default conversions still work.
+- [x] Add direct unit tests for the new helper and preserve wrapper regression coverage.
+
+### Task 13. Facet Geometry Helper API/Docstring + Independent Unittests
+Location: src/spac/visualization.py, tests/test_visualization/test_derive_facet_geometry.py
+
+Status: Done
+
+Action items:
+- [x] Improve `_derive_facet_geometry` docstring so documented behavior is explicit, API-directed, and testable.
+- [x] Add a dedicated unittest file for `_derive_facet_geometry` as an independent helper-function test target.
+- [x] Cover documented/default-like and corner-case helper inputs: positive integer `facet_ncol`, `"auto"`, fallback behavior, and figure-size hint sanitization.
+- [x] Keep helper-level assertions focused on deterministic documented outputs (ncol/height/aspect and normalized size-hint outputs).
+- [x] Run focused helper test file and keep existing histogram integration tests green.
+
+### Task 12. Facet Plot Test Decomposition and Smoke-Path Contract
+Location: tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Split the current heavy facet test into focused tests for structure, title mapping, label policy, and rendering smoke-path checks.
+- [x] Add one thin facet smoke-path test that verifies end-to-end execution and basic plotted output presence, including lightweight bar-level presence checks (non-empty facet patches/artists).
+- [x] Add split assertions that validate facet behavior using stable, non-geometry-sensitive checks.
+- [x] Run focused facet tests first, then run the full histogram test file.
+
+### Task 11. Facet Long X-Label Layout Handling
+Location: src/spac/templates/histogram_template.py, src/spac/visualization.py, tests/test_visualization/test_histogram.py, tests/templates/test_histogram_template.py
+
+Status: Done
+
+Implementation decision:
+- Use geometry-aware default facet sizing in the core histogram geometry path when explicit figure-size hints are absent.
+- Keep the template passing lay-out hints like `facet_fig_width` and `facet_fig_height`, and presentation-only label rotation.
+- Keep axis-label abbreviation out of this PR and treat it as future work.
+
+Action items:
+- [x] Apply facet rotation to tick labels in template post-processing rather than rotating the figure-level x label.
+- [x] Extend `_derive_facet_geometry` with a tick-label burden heuristic that increases facet height and rebalances aspect when long rotated labels would otherwise shrink the plot area too far.
+- [x] Keep explicit figure-size hints authoritative while allowing facet template figure size to remain `"auto"` and defer to derived geometry.
+- [x] Add a small, low-noise log message when automatic facet sizing reacts to unusually long labels.
+- [x] Add appropriate unittests for zero-rotation parity, long-label auto sizing, and explicit-size precedence.
+
+### Task 10. Helper Boundary Relocation and Naming Alignment (Facet Scope)
+Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Agreed renaming plan (to execute in this task):
+- `_parse_histogram_layout_kwargs` -> `_parse_facet_layout_hints` (universal helper naming).
+- `compute_global_bin_edges` / `resolve_hist_axis_labels` references in this plan correspond to current helpers `_compute_global_bin_edges` / `_resolve_histogram_axis_labels` in code.
+- Keep `_derive_facet_geometry` name unchanged.
+
+Action items:
+- [x] Rename `_parse_histogram_layout_kwargs` to `_parse_facet_layout_hints`.
+- [x] Move `compute_global_bin_edges` and `resolve_hist_axis_labels` logic into `histogram` scope.
+- [x] Verify histogram-level tests after helper-boundary relocation under CONTRIBUTING.md expectations.
+
+### Task 9. Facet `ax` Guardrail and Figure Lifecycle Refactor
+Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Reject `facet=True` when external `ax` is provided, with a clear validation message.
+- [x] Refactor histogram figure creation/closure flow to avoid throwaway figures and keep strict internal-ownership closing.
+- [x] Add minimal regression tests for the guardrail and lifecycle behavior.
+
+### Task 8. Template Histogram Unit-Test Completion
+Location: tests/templates/test_histogram_template.py
+
+Status: Done
+
+Action items:
+- [x] Verify template output contract remains stable (`saved_files` keys and generated artifacts).
+- [x] Remove duplicate facet x-label reassignment in template and keep semantic x-label ownership in `histogram`.
+- [x] Run template test file and verify passing status with histogram test updates.
+
+### Task 7. Visualization Histogram Unit-Test Completion
+Location: tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Run focused histogram test file and make it fully green.
+- [x] Complete remaining histogram coverage after Task 12 decomposition/smoke-path work.
+- [x] Add/adjust facet validation unit tests (`facet=True` requires `group_by`, and `facet` with `together=True` conflict).
+- [x] Decide not to add dedicated unittests or extra custom validation for seaborn passthrough kwargs such as `shrink` and `alpha` in this PR.
+- [x] Add one focused facet regression test for annotation-based categorical data using lightweight assertions.
+- [x] Double-check annotation-based categorical regression test scope/assertions to ensure it remains minimal and input-difference-focused.
+- [x] Decide to add one thin numeric-annotation facet smoke unittest and track its implementation in Task 19.
+- [x] Simplify the current categorical facet `bins`-ignore regression coverage so it matches the intended lightweight scope.
+- [x] Decide to move plotting-control validation scope cleanup into Task 20.
+- [x] Verify all introduced facet logic paths are covered after Tasks 17 and 19 are settled.
+
+### Task 6. Facet Label Strategy and Test Alignment
+Location: src/spac/visualization.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation plan:
+1. Replace per-axis xlabel/ylabel assertions with figure-level label assertions:
+   - assert per-axis labels are empty in facet mode,
+   - assert `fig._supxlabel` and `fig._supylabel` are present and match expected text.
+2. Add one focused regression assertion for label strategy under non-default stat (e.g., `stat='density'`) to confirm y super-label reflects stat mapping.
+3. Run only updated tests first for fast feedback, then run full histogram test file.
+4. If needed, do minimal assertion tuning to avoid over-constraining matplotlib internals.
+
+Action items:
+- [x] Lock decision: facet mode uses figure-level labels.
+- [x] Keep per-axis labels empty in facet mode and set supxlabel/supylabel.
+- [x] Update test_facet_plot to assert figure-level labels.
+- [x] Add one histogram-level regression assertion to lock label strategy and stat mapping.
+- [x] Keep facet label/title test coverage for the figure-level labeling contract under this task.
+
+### Task 5. Bins Default-Like Fallback Policy and Behavior
+Location: src/spac/templates/histogram_template.py, src/spac/visualization.py
+
+Status: Done
+
+Action items:
+- [x] Keep template as user-facing bins policy entrypoint.
+- [x] Keep explicit user bins unchanged.
+- [x] Normalize bare histogram default-like bins inputs to Rice-rule fallback (missing/None/auto-like).
+- [x] Keep facet numeric shared-bin behavior for cross-facet consistency.
+- [x] Add focused regression tests for default-like bins fallback behavior.
+
+### Task 4. Facet Layout Derivation and Non-Facet Kwarg Guardrails
+Location: src/spac/visualization.py, src/spac/templates/histogram_template.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Action items:
+- [x] Derive facet geometry from figure target size plus grid shape.
+- [x] Add panel-size/aspect guardrails.
+- [x] Facet layout kwargs must not leak into non-facet seaborn calls.
+- [x] Lock decision for this PR: keep current `_derive_facet_geometry` ratio approximation.
+- [x] Document facet geometry precedence and formula in template doc/comments.
+- [x] Add unit tests for facet layout parameters, including `facet_ncol` documented contract (`"auto"`, positive int) and `facet_fig_width`/`facet_fig_height` checks.
+
+### Task 3. Grouped Annotation Title Bugfix
+Location: src/spac/visualization.py
+
+Status: Done
+
+Action items:
+- [x] Restore per-group annotation title assignment in non-facet grouped mode.
+- [x] Verify grouped annotation titles render correctly.
+
+### Task 2. Histogram/Template Parameter Boundary
+Location: src/spac/templates/histogram_template.py
+
+Status: Done
+
+Action items:
+- [x] Expose facet and facet_ncol at template layer.
+- [x] Pass target_fig_width and target_fig_height as internal hints.
+- [x] Keep facet_vertical_threshold/facet_height/facet_aspect out of public API contract.
+
+### Task 1. Shared Global Bins Helper
+Location: src/spac/visualization.py
+
+Status: Done
+
+Action items:
+- [x] Create a shared bin-edge helper used by both together and facet grouped flows (currently histogram-local: `compute_global_bin_edges`).
+- [x] Replace together-mode duplicated bin-edge logic with helper call.
+- [x] Replace facet-mode duplicated bin-edge logic with helper call.
+- [x] Keep helper documented with concise behavior notes.
+- [x] Add shared-bin regression tests here, explicitly covering both numerical and categorical input cases.
+- [x] Add facet shared-scale assertions for y-tick consistency across facet panels (numeric and categorical paths).
