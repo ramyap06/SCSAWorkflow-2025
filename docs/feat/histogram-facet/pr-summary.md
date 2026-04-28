@@ -23,9 +23,9 @@ This PR finalizes histogram facet support in `SCSAWorkflow` by adding a faceted 
   1. `src/spac/visualization.py` for the facet plotting path, shared-bin behavior, and grouped return-data contract.
   2. `src/spac/templates/histogram_template.py` for template-side validation, forwarding, and layout handling.
   3. `tests/test_visualization/test_histogram.py`, `tests/test_visualization/test_derive_facet_geometry.py`, and `tests/templates/test_histogram_template.py` for focused coverage.
-- More implementation details can be found here: [pr-summary-details.md](https://github.com/ramyap06/SCSAWorkflow-2025/blob/073edd96e42531c9f8372fdd69167fdd194d049a/docs/pr/428-histogram-facet/pr-details.md).
-- Here is a jupyter notebook with plenty of tests: [test_histogram_facet_light_template.ipynb](https://github.com/ramyap06/SCSAWorkflow-2025/blob/073edd96e42531c9f8372fdd69167fdd194d049a/docs/pr/428-histogram-facet/test_histogram_facet_light_template.ipynb). Some output figures are attached below.
-- Here is a list of possible future work: [future-work.md](https://github.com/ramyap06/SCSAWorkflow-2025/blob/073edd96e42531c9f8372fdd69167fdd194d049a/docs/pr/428-histogram-facet/future-work.md)
+- More implementation details can be found here: [pr-details.md](https://github.com/ramyap06/SCSAWorkflow-2025/blob/ed5e80ca076bed61b05b20193bdb30212373b777/docs/feat/histogram-facet/pr-details.md).
+- Here is a jupyter notebook with plenty of tests: [test_histogram_facet_light_template.ipynb](https://github.com/ramyap06/SCSAWorkflow-2025/blob/ed5e80ca076bed61b05b20193bdb30212373b777/docs/feat/histogram-facet/test_histogram_facet_light_template.ipynb). Some output figures are attached below.
+- Here is a list of possible future work: [future-work.md](https://github.com/ramyap06/SCSAWorkflow-2025/blob/ed5e80ca076bed61b05b20193bdb30212373b777/docs/feat/histogram-facet/future-work.md)
 
 *This pull request body is generated with the help of Codex using GPT-5.4 (xhigh)*
 
