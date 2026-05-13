@@ -124,8 +124,8 @@ Q10. I used a complicated algorithm to compute layout (ratio of height and width
 
 ### Immediate Next Steps
 
-- Take care of the naming inconsistency between template and tests (email George)
-- Remove the deprecated plotting mode for together=False
+- Follow-up for the naming inconsistency between template and tests (email George)
+- Remove the deprecated plotting mode for together=False, facet=False
 - Allow auto-filter to most frequent groups with notification (rather than rejecting)
 - Move `derive_facet_geometry` to utils (and possible improvement)
 - Do not reject `ax` directly. Provide it in core function (for facet we can just provide our plotting)
@@ -139,5 +139,5 @@ Q10. I used a complicated algorithm to compute layout (ratio of height and width
   - Allow more seaborn `kwargs`;
   - Allow more values for existing `kwargs`;
   - A special case is `KDE`: this requires raw data plotting rather than pre-computed hist data by `calculate_histogram` function.
-- Possible simplification for helper functions (need evaluation)
+- Possible simplification/reloation for helper functions (need evaluation)
 - Possible simplification for facet geometry/layout derivation (need evaluation). Current way is driven by AI
