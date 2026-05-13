@@ -17,11 +17,12 @@ This plan now serves as the completed implementation record for histogram facet 
   - `tests/test_visualization/test_derive_facet_geometry.py`
   - `tests/templates/test_histogram_template.py`
 - Detailed records:
-  - [Task Details](./task-details.md)
-  - [Decisions](./decisions.md)
-  - [Implementation Log](./implementation-log.md)
-  - [Code Review 2026-04-21](./code-review-2026-04-21.md)
+  - [Task Details](./development-details/task-details.md)
+  - [Decisions](./development-details/decisions.md)
+  - [Implementation Log](./development-details/implementation-log.md)
+  - [Code Review](./development-details/code-review.md)
   - [PR Summary](./pr-summary.md)
+  - [PR Report](./pr-report.md)
   - [PR Details](./pr-summary-details.md)
   - [Future Work](./future-work.md)
 
