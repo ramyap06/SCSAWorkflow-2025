@@ -23,7 +23,7 @@ This PR finalizes histogram facet support in `SCSAWorkflow` by adding a faceted 
 
 ## Notes For Review
 
-- Here is a more comprehensive PR report: [pr-report.md](https://github.com/ramyap06/SCSAWorkflow-2025/blob/2fe1b891bd825446f801b96b809a548a0b00844c/docs/feat/histogram-facet/pr-report.md).
+- Here is a more comprehensive PR report: [pr-report.md](https://github.com/ramyap06/SCSAWorkflow-2025/blob/a2003176b459c52d6a0f6b3996b8f869b655e204/docs/feat/histogram-facet/pr-report.md).
 - Suggested review order:
   1. `src/spac/visualization.py` for the facet plotting path, shared-bin behavior, and grouped return-data contract.
   2. `src/spac/templates/histogram_template.py` for template-side validation, forwarding, and layout handling.
