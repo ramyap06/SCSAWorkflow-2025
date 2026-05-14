@@ -1,3 +1,7 @@
+# feat(histogram): add faceted plots with adaptive layout
+
+https://github.com/FNLCR-DMAP/SCSAWorkflow/pull/428
+
 ## Related PR
 
 This PR depends on PR #328.

@@ -4,7 +4,7 @@ Date: 2026-05-12
 
 Reporter: Boqiang
 
-This is a comprehensive PR report for the facet (on histograms) PR. 
+This is a comprehensive PR report for the facet PR https://github.com/FNLCR-DMAP/SCSAWorkflow/pull/428.
 
 ## Contents
 
@@ -12,7 +12,7 @@ This is a comprehensive PR report for the facet (on histograms) PR.
 - Q&A For Facet PR
 - Future Work
 
-## Overview of Facet PR #328
+## Overview of Facet PR #428
 
 ### 1. Info
 
