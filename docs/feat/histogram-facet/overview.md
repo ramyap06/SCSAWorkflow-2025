@@ -30,7 +30,7 @@ This plan now serves as the completed implementation record for histogram facet 
 
 ## Immediate Next Step
 
-None currently.
+Follow up on the remaining open review questions in Issues.
 
 ## Progress
 
@@ -47,6 +47,9 @@ None currently.
 CR.3. Formatting cleanup for review readiness.
 
 ### Addressed Tasks
+CR.10. Histogram Parameter Contract Simplification.
+CR.8. Move Facet Geometry Helper to Shared Utils.
+CR.9. Hard-Code Default Bins Test Expectation.
 CR.4. Dedicated PR summary for histogram facet changes.
 CR.7. Histogram visualization documentation consistency cleanup.
 CR.6. Conditional forwarding of grouped-only and facet-only template hints.
@@ -77,7 +80,9 @@ CR.1. Documentation/review alignment for `max_groups` and `facet_ncol` direct-ca
 22. Unused Import Cleanup in Touched Histogram Modules.
 
 ### Issues (Open)
-None currently.
+1. Follow up on George's question about whether `shrink`, `bins`, `alpha`, and `stat` were removed from the histogram template contract; they were not removed, and this has been clarified in reply while waiting for George's response.
+2. Decide whether the histogram template needs additional meaningful tests for template-owned behavior, especially title/suptitle handling, while avoiding broad validation-only tests that only duplicate core or `text_to_value` coverage. (some others include but not limited to: final figure/output handling, and conditional forwarding)
+3. Add future grouped-plot behavior for excessive groups: when group count exceeds `max_groups`, plot the most frequent `max_groups` groups with a warning instead of rejecting the plot.
 
 ---
 
@@ -85,19 +90,19 @@ None currently.
 
 ### Current Code Structure (Latest)
 1. Histogram core and helper flow are in src/spac/visualization.py:
-   - `histogram` parses/validates facet layout hints explicitly in its grouped facet path.
-   - `_derive_facet_geometry` now assumes pre-normalized inputs and focuses on geometry derivation plus long-label default sizing heuristics.
+   - `histogram` now expects normalized direct-call values for grouped/facet layout hints and keeps only minimal structural checks at the core boundary.
+   - `derive_facet_geometry` lives in `src/spac/utils.py`, assumes pre-normalized inputs, and focuses on geometry derivation plus long-label default sizing heuristics.
    - histogram-local helpers `build_grouped_histogram_table` and `resolve_hist_axis_labels` are used across grouped/facet/single histogram paths.
    - Histogram uses figure-level labels in facet mode (clears per-axis labels, sets supxlabel/supylabel).
-   - Bins default-like fallback logic now applies the in-house Rice rule only for numeric data; categorical default-like bins stay non-computational.
+   - Core `bins` fallback now treats omitted/`None` and `"auto"` as default-like; loose text aliases are handled at the template boundary rather than direct-call core.
 2. Template wrapper in src/spac/templates/histogram_template.py:
    - Facet and facet_ncol are exposed as user controls.
    - Figure size contract remains at template layer and is passed internally as `facet_fig_width` / `facet_fig_height` hints.
    - `Figure_Width` / `Figure_Height` may remain `"auto"` in facet mode so core geometry can size the figure automatically.
    - Template keeps bins policy and layout-hint normalization at the boundary, forwards `multiple` only for grouped same-axis overlays, and ignores grouped/facet-only hints when their modes are inactive.
 3. Current focused test state (tests/test_visualization/test_histogram.py):
-   - Focused histogram/helper/template verification is green at current `HEAD` (`54 passed, 3 warnings`) across `tests/test_visualization/test_histogram.py`, `tests/test_visualization/test_derive_facet_geometry.py`, and `tests/templates/test_histogram_template.py`.
-   - The latest follow-up commits kept Task 20's overlay-only `multiple` rule aligned at the template boundary and removed unused imports in touched histogram modules without changing behavior.
+   - Focused histogram/template verification is green for the current staged CR.10 snapshot (`45 passed, 1 warning`) across `tests/test_visualization/test_histogram.py` and `tests/templates/test_histogram_template.py`.
+   - The latest follow-up removed stale direct-call tests for removed core contracts and tightened matching test docstrings after reverting a noisy default-`max_groups` warning.
 
 ### Codebase Pattern Findings (Concise)
 1. Visualization-specific shared logic should stay in visualization.py module-level helpers.
@@ -124,7 +129,6 @@ See [implementation-log.md](./development-details/implementation-log.md) for the
 - Follow-up for the naming inconsistency between template and tests (email George)
 - Remove the deprecated plotting mode for together=False, facet=False
 - Allow auto-filter to most frequent groups with notification (rather than rejecting)
-- Move `derive_facet_geometry` to utils (and possible improvement)
 - Do not reject `ax` directly. Provide it in core function (for facet we can just provide our plotting)
 - Add unittests for additional functionality on template
 
@@ -156,6 +160,7 @@ See [implementation-log.md](./development-details/implementation-log.md) for the
    - Use direct helper tests only where helper branching is non-trivial; otherwise cover behavior through public histogram tests.
    - Keep template tests I/O-oriented.
    - For UI-motivated geometry heuristics, prefer relational assertions (for example, larger than default or explicit hints remain authoritative) over exact formula-locked numbers.
+   - Hard code the values in the tests.
 - Helper-location decision rule (first-principles):
    - Keep a helper at module level only when it has clear cross-function/cross-plot reuse in current or near-term planned work.
    - Keep or move a helper into function scope when logic is specific to one plotting function and exposing it would only increase maintenance surface.

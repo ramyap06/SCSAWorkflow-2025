@@ -1,5 +1,70 @@
 # Implementation Log
 
+### 2026-06-09
+
+- Rechecked Task CR.10 after the default-`max_groups` warning was reverted.
+   - Time: 08:18
+   - Tightened stale histogram test docstrings so they describe the narrowed
+     direct-call contract: omitted `facet_ncol` now represents automatic
+     layout coverage, and facet figure-size tests only claim valid explicit
+     hint behavior.
+   - Re-scanned related histogram core, template, and test wording for stale
+     references to removed contracts such as `"unlimited"`, core-only
+     fail-fast validation, and `_parse_optional_number`.
+   - Verification:
+      - `env PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_visualization/test_histogram.py tests/templates/test_histogram_template.py -q -p no:cacheprovider` (45 passed, 1 warning)
+
+### 2026-06-08
+
+- Completed Task CR.10 (histogram parameter contract simplification).
+   - Time: 23:18
+   - Updated direct-call histogram tests to match the narrowed core contract:
+     kept `bins=None` / `bins="auto"` fallback coverage, removed stale
+     `"unlimited"` `max_groups` coverage, stopped asserting core-owned
+     positivity/type validation for grouped and facet layout hints, and kept
+     the structural facet figure-size pair guardrail.
+   - Left the histogram template test as the focused real I/O template
+     coverage; no `text_to_value()` changes or template-utility tests were
+     needed.
+   - Verification:
+      - `env PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_visualization/test_histogram.py tests/templates/test_histogram_template.py -q -p no:cacheprovider` (45 passed, 1 warning)
+
+### 2026-05-17
+
+- Advanced Task CR.10 (histogram parameter contract simplification).
+   - Time: in progress
+   - Updated `src/spac/templates/histogram_template.py` so template parsing
+     keeps the Rice-rule bins fallback, parses x-axis rotation through
+     `text_to_value(...)`, treats missing/null-like `Max_Groups` as
+     unspecified, and removes the launched-facing `"unlimited"` path.
+   - Updated `src/spac/visualization.py` so core `histogram()` no longer uses
+     the histogram-local `_parse_optional_number()` helper, narrows bins
+     fallback handling to omitted/`"auto"` values, removes `"unlimited"` from
+     the documented grouped-plot contract, and keeps only the facet
+     width/height pair check plus simple `facet_tick_rotation` conversion.
+   - Remaining work:
+      - Update or remove direct-call tests that assert the removed core
+        contracts.
+      - Run focused histogram and histogram-template tests after test updates.
+   - Verification:
+      - Not run yet; testing is the remaining CR.10 work.
+
+### 2026-05-15
+
+- Completed Tasks CR.8 and CR.9 (facet geometry helper relocation and default
+  bins test cleanup).
+   - Time: 21:13
+   - Moved the facet geometry helper out of `src/spac/visualization.py` and
+     exposed it as `derive_facet_geometry` from `src/spac/utils.py`.
+   - Updated `histogram()` to import and use the shared utils helper.
+   - Moved the dedicated helper tests from
+     `tests/test_visualization/test_derive_facet_geometry.py` to
+     `tests/test_utils/test_derive_facet_geometry.py` and updated the import.
+   - Hard-coded the `test_default_bins_calculation(self)` expected bin count
+     to `9` with a fixture-size/Rice-rule rationale comment.
+   - Verification:
+      - `MPLCONFIGDIR=/tmp/mplconfig NUMBA_CACHE_DIR=/tmp/numba XDG_CACHE_HOME=/tmp/.cache PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 conda run -n spac python -m pytest tests/test_utils/test_derive_facet_geometry.py tests/test_visualization/test_histogram.py -q` (53 passed)
+
 ### 2026-04-23
 
 - Completed Task CR.4 (dedicated PR summary for histogram facet changes).

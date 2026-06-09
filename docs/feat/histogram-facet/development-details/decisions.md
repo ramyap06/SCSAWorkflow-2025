@@ -1,5 +1,87 @@
 # Decisions
 
+### D49. Keep `text_to_value()` Simple for CR.10
+Date: 2026-05-16
+Decision:
+Revise `Task CR.10` so histogram parameter contract cleanup uses the existing
+`text_to_value()` helper plus explicit template-level validation, rather than
+requiring new `positive` or custom mapping options in the shared helper.
+
+Details:
+- Treat `text_to_value()` as a small shared converter for null-like aliases,
+  integer conversion, float conversion, and conversion error messages.
+- Use current arguments such as `default_none_text`, `value_to_convert_to`,
+  `to_int`, and `to_float` for histogram template parsing.
+- Keep positivity checks inline in `histogram_template.py` where messages can
+  stay parameter-specific.
+- Only extend `text_to_value()` later if implementation reveals repeated or
+  awkward parsing that cannot be expressed cleanly with the current helper.
+
+Rationale:
+The existing helper already covers the needed `"auto"` and null-like
+normalizations. Adding generic positivity and mapping options would make a
+broadly used utility heavier without clear payoff for this task.
+
+### D48. Convert `_parse_optional_number` Cleanup Into Task CR.10
+Date: 2026-05-16
+Decision:
+Convert the remaining `_parse_optional_number` issue into `Task CR.10`,
+scoped as histogram parameter contract simplification across template parsing,
+core direct-call expectations, and focused tests.
+
+Details:
+- Remove the histogram-local `_parse_optional_number` helper.
+- Expand `text_to_value()` narrowly with reusable template-boundary support for
+  positive numeric validation and custom text-to-value mappings.
+- Treat the template as the user-facing parsing and positivity-validation
+  layer for histogram controls.
+- Keep `histogram()` lean: document normalized direct-call inputs, keep
+  `bins="auto"` normalization for Rice-rule fallback, preserve
+  `facet=True`/`together=True` semantic validation, and keep only the
+  structural pair check for facet figure-size hints.
+- Remove the `"unlimited"` `max_groups` contract. Missing or null-like
+  `Max_Groups` resolves to `20` in the template, with a warning only for
+  explicit user-provided null-like values.
+- Keep `Facet_Ncol="auto"` as a template token that normalizes to `None`.
+- Track the preferred future excessive-group behavior separately: plot the
+  most frequent `max_groups` groups with a warning instead of rejecting.
+
+Rationale:
+This follows George's guidance to move checks to the template layer when the
+template is the real user-facing path, while keeping the public core function
+documented and structurally safe without endless low-probability validation.
+
+### D47. Route Remaining Open Issues Into Review Tasks and Follow-Ups
+Date: 2026-05-15
+Decision:
+Route the current open histogram-facet review issues into explicit CR tasks
+where implementation is now agreed, and keep unresolved mentor/product
+questions open as follow-ups.
+
+Details:
+- Convert Issue 1 into `Task CR.8`, scoped as moving
+  `_derive_facet_geometry` to shared utils because George explicitly requested
+  it and future datashader work is expected to reuse the helper.
+- Convert Issue 4 into `Task CR.9`, scoped as hard-coding the
+  fixture-specific default-bin expectation in
+  `test_default_bins_calculation(self)`.
+- Keep Issue 2 open while deciding the final `_parse_optional_number` scope:
+  strict template validation plus minimal public-core defensiveness is the
+  preferred engineering default, but the next task shape should wait for
+  George/product clarification.
+- Keep Issue 3 open while waiting for George's response after clarifying that
+  `shrink`, `bins`, `alpha`, and `stat` were not actually removed from the
+  histogram template contract.
+- Keep Issue 5 open while deciding meaningful template-owned tests; title and
+  suptitle behavior are good candidates, while broad validation-only tests
+  should be avoided when they only duplicate core or `text_to_value` coverage.
+- Do not add an implementation-log entry for this update because no code or
+  test execution happened.
+
+Rationale:
+This keeps review-stage task tracking actionable without prematurely turning
+open mentor/product questions into implementation work.
+
 ### D46. Convert the Remaining Template Issue Into Task CR.6
 Date: 2026-04-22
 Decision:

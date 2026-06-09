@@ -5,7 +5,7 @@
 - Follow-up for the naming inconsistency between template and tests (email George)
 - Remove the deprecated plotting mode for together=False, facet=False
 - Allow auto-filter to most frequent groups with notification (rather than rejecting)
-- Move `derive_facet_geometry` to utils (and possible improvement)
+- Possible improvement on `derive_facet_geometry` helper
 - Do not reject `ax` directly. Provide it in core function (for facet we can just provide our plotting)
 - Add unittests for additional functionality on template
 

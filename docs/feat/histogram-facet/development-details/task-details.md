@@ -2,6 +2,92 @@
 
 ## Code Review
 
+### Task CR.10. Histogram Parameter Contract Simplification
+Location: src/spac/visualization.py, src/spac/templates/histogram_template.py, tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation remarks:
+- Resolve the `_parse_optional_number` cleanup by removing the histogram-local
+  helper and making the template/core boundary explicit.
+- Template-side parsing is the user-facing contract. Positivity validation for
+  user-entered numeric controls belongs at the template layer.
+- Core `histogram()` should accept normalized Python values, document the
+  narrowed direct-call contract, and keep only minimal explicit checks that are
+  still structural for plotting behavior.
+- Remove the `"unlimited"` `max_groups` contract; George prefers a future
+  top-N-with-warning behavior over unlimited grouped plotting.
+- Prefer the existing `text_to_value()` helper plus explicit template-level
+  validation. Do not expand the shared helper unless implementation reveals
+  repeated or awkward parsing that cannot be expressed cleanly with the current
+  arguments.
+
+Action items:
+- [x] Update histogram template parsing with existing `text_to_value()` calls:
+  keep `Bins="auto"` falling back to the template Rice-rule calculation,
+  normalize `Facet_Ncol="auto"` to `None`, default unspecified `Max_Groups`
+  to `20`, convert `Figure_Width` / `Figure_Height` numerically, and keep
+  inline positive-value errors for these template controls.
+- [x] Remove `"unlimited"` support from `Max_Groups`; treat missing and
+  null-like values uniformly as unspecified, resolving them to `20` at the
+  template layer.
+- [x] Remove `_parse_optional_number()` from `histogram()` and replace it with
+  the narrowed core handling: normalize only `bins="auto"` to `None`, keep the
+  facet figure-size pair check, and keep `facet_tick_rotation` as a simple
+  numeric value or direct `float(...)` conversion.
+- [x] Narrow the `histogram()` docstring contract: remove `"unlimited"` and
+  loose text aliases from the documented kwargs, keep `bins` documented as an
+  optional bin count with `"auto"` fallback, and keep facet kwargs documented
+  as optional kwargs without spelling out `None` for every omitted value.
+- [x] Update or remove direct-call tests that assert now-removed core contracts,
+  including `"unlimited"` and core-only positivity validation paths.
+- [x] Run focused tests for histogram behavior and the histogram template;
+  include template-utility tests only if `text_to_value()` changes become
+  necessary.
+
+### Task CR.9. Hard-Code Default Bins Test Expectation
+Location: tests/test_visualization/test_histogram.py
+
+Status: Done
+
+Implementation remarks:
+- Keep this as a small test-readability cleanup.
+- Replace the dynamically derived expectation in
+  `test_default_bins_calculation(self)` with the fixture-specific expected bin
+  count.
+- The current histogram fixture has 100 cells, so the Rice-rule fallback
+  expected value is `9`.
+
+Action items:
+- [x] Replace the dynamic `expected_bins` expression in
+  `test_default_bins_calculation(self)` with `9`.
+- [x] Keep the existing assertions for plotted patches, returned dataframe row
+  count, and dataframe columns.
+- [x] Run the focused histogram tests after the change.
+
+### Task CR.8. Move Facet Geometry Helper to Shared Utils
+Location: src/spac/visualization.py, src/spac/utils.py, tests/test_utils/test_derive_facet_geometry.py
+
+Status: Done
+
+Implementation remarks:
+- George explicitly requested moving the facet geometry helper to shared utils,
+  and future datashader density work is expected to reuse it.
+- Preserve the current helper behavior and public test expectations while
+  moving the implementation boundary.
+- Keep this as a relocation/refactor task, not a geometry-policy redesign.
+- The accepted implementation exposes the helper as `derive_facet_geometry`
+  from `spac.utils`.
+
+Action items:
+- [x] Move the facet geometry helper from `src/spac/visualization.py` to
+  `src/spac/utils.py`.
+- [x] Update `src/spac/visualization.py` to import and use the shared helper.
+- [x] Move `test_derive_facet_geometry.py` from `tests/test_visualization/` to
+  `tests/test_utils` and update import.
+- [x] Preserve existing facet layout behavior and helper tests.
+- [x] Run the focused facet geometry and histogram tests after the change.
+
 ### Task CR.7. Histogram Visualization Documentation Consistency Cleanup
 Location: src/spac/visualization.py
 
